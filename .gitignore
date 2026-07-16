@@ -1,0 +1,25 @@
+# --- 비밀정보 (절대 커밋 금지) ---
+.env
+.env.*
+!.env.example
+
+# --- 의존성 ---
+node_modules/
+
+# --- 빌드 산출물 ---
+dist/
+*.ait
+
+# 참고: data/price_cache.json, data/financials.json 은 RSI 누적·재무 캐시라
+#       GitHub Actions가 커밋해 영속화해야 하므로 gitignore하지 않는다 (SPEC 7장).
+
+# --- 로그/OS ---
+*.log
+.DS_Store
+Thumbs.db
+
+# --- Python ---
+__pycache__/
+*.pyc
+.venv/
+venv/

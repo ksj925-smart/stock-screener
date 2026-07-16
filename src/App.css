@@ -1,0 +1,683 @@
+/* 주식 조건 조회 — 프로토타입(stock_screener_prototype_v6.html) 확정 UI 이식 */
+:root {
+  --bg: #0b0d12;
+  --card: #151a23;
+  --card2: #1c222d;
+  --line: #252c39;
+  --dim: #2e3644;
+  --tx: #eaeef5;
+  --tx2: #98a1b2;
+  --tx3: #68728a;
+  --acc: #2bd9a8;
+  --acc-w: #1e9e7a;
+  --up: #f5455c;
+  --down: #4c8dff;
+  --star: #ffc84a;
+  --barh: 64px; /* 고정 카운트바 높이 */
+  --navh: 62px;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  background: var(--bg) !important;
+  color: var(--tx);
+  font-family:
+    -apple-system,
+    "Apple SD Gothic Neo",
+    "Pretendard",
+    "Noto Sans KR",
+    sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  display: block !important;
+  padding-bottom: calc(var(--barh) + var(--navh) + env(safe-area-inset-bottom));
+}
+
+#root {
+  background: var(--bg) !important;
+  max-width: none;
+  /* TDS emotion 전역 스타일이 body 배경을 밝은색(#f5f5f5)으로 덮어써,
+     콘텐츠가 짧은 화면(즐겨찾기 등)에서 #root 아래로 흰 영역이 드러난다.
+     #root가 항상 뷰포트 전체 높이를 다크로 덮도록 min-height를 준다. */
+  min-height: 100vh;
+}
+
+button {
+  font-family: inherit;
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: inherit;
+}
+
+.wrap {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 16px;
+  /* TDSMobileAITProvider가 래퍼에 밝은-배경용 기본 텍스트색(#212529)을 심어
+     body의 color: var(--tx) 상속을 끊는다. 우리 루트 컨테이너에서 다시 --tx로
+     복구해, color를 명시하지 않고 상속에 의존하는 요소(h1·.fname·.n1·.p1 등)가
+     어두운 배경 위에서 흐리게 렌더되는 문제를 막는다. */
+  color: var(--tx);
+}
+
+.loading {
+  padding: 80px 0;
+  text-align: center;
+  color: var(--tx3);
+}
+
+header {
+  padding: 18px 0 14px;
+}
+h1 {
+  font-size: 23px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+.basis {
+  font-size: 13px;
+  color: var(--tx3);
+  margin-top: 5px;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--card);
+  padding: 4px;
+  border-radius: 13px;
+  margin-bottom: 14px;
+}
+.tab {
+  flex: 1;
+  padding: 10px 0 8px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--tx3);
+  border-radius: 10px;
+  transition: 0.15s;
+  border-bottom: 2.5px solid transparent;
+}
+.tab.on {
+  background: var(--card2);
+  color: var(--acc);
+  font-weight: 800;
+  border-bottom-color: var(--acc);
+}
+
+.filters {
+  background: var(--card);
+  border-radius: 16px;
+  /* 카드 좌우 안쪽 패딩을 8px로 줄여, .wrap의 화면 여백(16px)과 이중으로 걸리던
+     인셋(16+15=31px)을 완화한다. 슬라이더 조작 폭을 최대한 넓게 확보(손가락
+     이동당 값 변화 해상도 개선). 위/아래 패딩은 유지. */
+  padding: 4px 8px 12px;
+}
+.f {
+  padding: 13px 0;
+  border-bottom: 1px solid var(--line);
+}
+.f:last-child {
+  border-bottom: none;
+}
+.fhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.fname {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+.fname .term {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tx3);
+  letter-spacing: 0;
+}
+.info {
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  border: 1px solid var(--tx3);
+  color: var(--tx3);
+  font-size: 10.5px;
+  line-height: 14px;
+  text-align: center;
+  flex: none;
+  font-weight: 700;
+  padding: 0;
+}
+.info.on {
+  border-color: var(--acc);
+  color: var(--acc);
+}
+.fval {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--acc);
+  font-variant-numeric: tabular-nums;
+}
+.fval.dir {
+  color: var(--tx);
+}
+.fval.all {
+  color: var(--tx3);
+  font-weight: 600;
+}
+.tip {
+  font-size: 13.5px;
+  color: var(--tx2);
+  line-height: 1.6;
+  background: var(--card2);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 9px 0 1px;
+}
+
+/* 히스토 38px + 트랙/핸들 + 스케일. 핸들(세로 36~59px)이 바닥 고정 스케일과
+   겹치지 않도록 높이를 78px로 잡아 스케일을 핸들 아래로 내린다. */
+.rg {
+  position: relative;
+  height: 78px;
+  margin-top: 7px;
+}
+.hist {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 38px;
+  display: flex;
+  align-items: flex-end;
+  gap: 1.5px;
+}
+.hb {
+  flex: 1;
+  background: var(--dim);
+  border-radius: 2px 2px 0 0;
+  min-height: 2px;
+  transition:
+    background 0.14s,
+    opacity 0.14s;
+  opacity: 0.5;
+}
+.hb.in {
+  opacity: 1;
+}
+.track {
+  position: absolute;
+  top: 45px;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: var(--dim);
+  border-radius: 3px;
+}
+.fill {
+  position: absolute;
+  top: 45px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--acc);
+  box-shadow: 0 0 8px rgba(43, 217, 168, 0.35);
+}
+.rg.dir .fill {
+  background: linear-gradient(90deg, #4c8dff, #8c7fc4, #f5455c);
+  box-shadow: none;
+}
+.rg input[type="range"] {
+  position: absolute;
+  top: 38px;
+  left: 0;
+  width: 100%;
+  height: 19px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: none;
+  pointer-events: none;
+  margin: 0;
+}
+.rg input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  pointer-events: auto;
+  width: 23px;
+  height: 23px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3.5px solid var(--acc);
+  cursor: grab;
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.6);
+}
+.rg.dir input[type="range"]::-webkit-slider-thumb {
+  border-color: #d3d9e3;
+}
+.rg input[type="range"]::-moz-range-thumb {
+  pointer-events: auto;
+  width: 23px;
+  height: 23px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3.5px solid var(--acc);
+}
+.scale {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--tx3);
+}
+
+.tg {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 0 2px;
+}
+.tg span {
+  font-size: 15px;
+  color: var(--tx2);
+}
+.sw {
+  width: 46px;
+  height: 26px;
+  border-radius: 13px;
+  background: var(--dim);
+  position: relative;
+  transition: 0.2s;
+  flex: none;
+  padding: 0;
+}
+.sw.on {
+  background: var(--acc-w);
+}
+.sw::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  transition: 0.2s;
+}
+.sw.on::after {
+  transform: translateX(20px);
+}
+
+.reset {
+  width: 100%;
+  margin-top: 11px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--tx2);
+  font-size: 14px;
+  font-weight: 600;
+}
+.reset:active {
+  background: var(--card2);
+}
+
+.ad-slot {
+  margin-top: 12px;
+}
+.ad-slot:empty {
+  display: none;
+}
+
+.rbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 20px 0 10px;
+}
+.rbar .ttl {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--tx2);
+}
+select {
+  background: var(--card);
+  border: 1px solid var(--line);
+  color: var(--tx2);
+  font-size: 13.5px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  background: var(--card);
+  border-radius: 14px;
+  padding: 14px 12px 14px 15px;
+  margin-bottom: 8px;
+}
+.ic {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--card2);
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--tx2);
+}
+.nm {
+  flex: 1;
+  min-width: 0;
+}
+.nm .n1 {
+  font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nm .n2 {
+  font-size: 12.5px;
+  color: var(--tx3);
+  margin-top: 3px;
+  font-variant-numeric: tabular-nums;
+}
+.pr {
+  text-align: right;
+  flex: none;
+}
+.pr .p1 {
+  font-size: 15.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.pr .p2 {
+  font-size: 13px;
+  font-weight: 700;
+  margin-top: 3px;
+  font-variant-numeric: tabular-nums;
+}
+.up {
+  color: var(--up);
+}
+.down {
+  color: var(--down);
+}
+.flat {
+  color: var(--tx3);
+}
+.st {
+  width: 32px;
+  flex: none;
+  text-align: center;
+  font-size: 22px;
+  color: var(--tx3);
+  line-height: 1;
+  user-select: none;
+  padding: 0;
+}
+.st.on {
+  color: var(--star);
+}
+
+.fav-row {
+  touch-action: none;
+}
+.fav-row.drag {
+  opacity: 0.94;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.6);
+  z-index: 20;
+  position: relative;
+}
+.fav-row.slide {
+  transition: transform 0.16s ease;
+}
+.grip {
+  width: 28px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 3.5px;
+  align-items: center;
+  cursor: grab;
+  padding: 6px 0;
+  touch-action: none;
+}
+.grip i {
+  display: block;
+  width: 16px;
+  height: 2px;
+  background: var(--tx3);
+  border-radius: 1px;
+}
+.fmet {
+  display: flex;
+  gap: 6px;
+  margin-top: 9px;
+  flex-wrap: wrap;
+}
+.chip {
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--card2);
+  color: var(--tx2);
+  padding: 4px 8px;
+  border-radius: 7px;
+  font-variant-numeric: tabular-nums;
+}
+.chip b {
+  color: var(--tx);
+  font-weight: 800;
+}
+.fcard {
+  background: var(--card);
+  border-radius: 14px;
+  padding: 13px 12px 13px 8px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.empty {
+  text-align: center;
+  padding: 44px 20px;
+  color: var(--tx3);
+  font-size: 15px;
+  background: var(--card);
+  border-radius: 14px;
+  line-height: 1.8;
+}
+.excl {
+  font-size: 13px;
+  color: var(--tx3);
+  text-align: center;
+  margin-top: 14px;
+}
+.hint {
+  font-size: 13px;
+  color: var(--tx3);
+  margin-bottom: 11px;
+}
+
+footer {
+  margin-top: 30px;
+  padding: 18px 0 10px;
+  border-top: 1px solid var(--line);
+  font-size: 12.5px;
+  color: var(--tx3);
+  line-height: 1.8;
+}
+footer b {
+  color: var(--tx2);
+  font-weight: 600;
+  display: block;
+  margin-bottom: 5px;
+}
+footer p {
+  margin-bottom: 11px;
+}
+.mock {
+  background: #3a2a12;
+  color: #e8b160;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  padding: 8px;
+  border-radius: 9px;
+  margin: 12px 0 0;
+}
+
+/* ===== 하단 고정 카운트바 ===== */
+#cbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--navh) + env(safe-area-inset-bottom));
+  background: rgba(15, 19, 26, 0.94);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--line);
+  z-index: 45;
+  height: var(--barh);
+  display: flex;
+  align-items: center;
+}
+#cbar .in {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 16px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+#cbar .num {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  flex: none;
+}
+#cbar .num b {
+  font-size: 30px;
+  font-weight: 800;
+  color: var(--acc);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -1px;
+  line-height: 1;
+}
+#cbar.zero .num b {
+  color: var(--tx3);
+}
+#cbar .num i {
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 700;
+  color: var(--tx2);
+}
+#cbar .cd {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--tx3);
+  font-weight: 600;
+  line-height: 1.4;
+  max-height: 34px;
+  overflow: hidden;
+}
+#cbar .cd em {
+  color: var(--tx2);
+  font-style: normal;
+  font-weight: 700;
+}
+#cbar .cd .sep {
+  margin: 0 4px;
+  opacity: 0.5;
+}
+#cbar .go {
+  flex: none;
+  background: var(--acc-w);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 9px 13px;
+  border-radius: 10px;
+}
+#cbar.zero .go {
+  opacity: 0.35;
+}
+
+nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #0f131a;
+  border-top: 1px solid var(--line);
+  display: flex;
+  z-index: 50;
+  height: calc(var(--navh) + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+}
+nav button {
+  flex: 1;
+  text-align: center;
+  padding: 11px 0;
+  font-size: 12.5px;
+  color: var(--tx3);
+  font-weight: 600;
+}
+nav button.on {
+  color: var(--acc);
+}
+nav button span {
+  display: block;
+  font-size: 20px;
+  margin-bottom: 2px;
+  line-height: 1;
+}
+.badge {
+  display: inline-block;
+  background: var(--acc-w);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: 9px;
+  padding: 1px 6px;
+  margin-left: 4px;
+  vertical-align: 1px;
+  font-style: normal;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}

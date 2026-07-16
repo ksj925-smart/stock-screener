@@ -1,0 +1,49 @@
+# 평일 14:30 KST(= 05:30 UTC) — 공공데이터 갱신(영업일 하루 뒤 13시 이후) 확보 보장 (SPEC 7장)
+name: build-screener-json
+
+on:
+  schedule:
+    - cron: "30 5 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      refresh_financials:
+        description: "재무 데이터(분기 1회)도 갱신할지"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: pip install -r pipeline/requirements.txt
+
+      - name: Refresh financials (manual, quarterly)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.refresh_financials }}
+        working-directory: pipeline
+        env:
+          DATA_GO_KR_API_KEY: ${{ secrets.DATA_GO_KR_API_KEY }}
+        run: python fetch_financials.py
+
+      - name: Build screener.json
+        working-directory: pipeline
+        env:
+          DATA_GO_KR_API_KEY: ${{ secrets.DATA_GO_KR_API_KEY }}
+        run: python build_json.py
+
+      - name: Commit & push
+        run: |
+          git config user.name "screener-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add docs/screener.json data/
+          git diff --cached --quiet || git commit -m "chore: update screener.json"
+          git push
