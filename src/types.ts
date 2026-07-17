@@ -33,5 +33,15 @@ export interface ScreenerData {
   t: Stock[];
 }
 
-export type SortKey = "cap" | "capa" | "rsi" | "pbr" | "per" | "r" | "ra";
+export type SortKey =
+  | "cap"
+  | "capa"
+  | "rsi"
+  | "rsid"
+  | "pbr"
+  | "pbrd"
+  | "per"
+  | "perd"
+  | "r"
+  | "ra";
 export type MarketFilter = "all" | "0" | "1";

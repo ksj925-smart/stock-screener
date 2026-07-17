@@ -58,7 +58,7 @@ const shot = async (name) => {
 };
 
 await page.goto(URL, { waitUntil: "networkidle2", timeout: 60000 });
-await page.waitForSelector(".row", { timeout: 30000 });
+await page.waitForSelector(".fcard", { timeout: 30000 });
 
 // 1) 조회 탭 초기 화면: 슬라이더+히스토그램, 하단 카운트바에 전체 종목 수
 await page.evaluate(() => window.scrollTo(0, 0));

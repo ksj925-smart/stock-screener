@@ -359,40 +359,124 @@ h1 {
   font-weight: 700;
   color: var(--tx2);
 }
-select {
+.sortbtn {
   background: var(--card);
   border: 1px solid var(--line);
   color: var(--tx2);
   font-size: 13.5px;
   padding: 9px 11px;
   border-radius: 10px;
-  font-family: inherit;
   font-weight: 600;
-  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sortbtn:active {
+  background: var(--card2);
+}
+.sortbtn .caret {
+  color: var(--tx3);
+  font-size: 11px;
 }
 
-.row {
-  display: flex;
-  align-items: center;
-  gap: 11px;
+/* ===== 정렬 바텀시트 (네이티브 select 대체) ===== */
+.sheet-dim {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 60;
+  animation: dimIn 0.18s ease-out;
+}
+.sheet-dim.out {
+  animation: dimOut 0.18s ease-in forwards;
+}
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-width: 480px;
+  margin: 0 auto;
   background: var(--card);
-  border-radius: 14px;
-  padding: 14px 12px 14px 15px;
-  margin-bottom: 8px;
+  border: 1px solid var(--line);
+  border-bottom: none;
+  border-radius: 20px 20px 0 0;
+  padding: 8px 12px calc(14px + env(safe-area-inset-bottom));
+  animation: sheetUp 0.22s cubic-bezier(0.22, 1, 0.36, 1);
 }
-.ic {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  background: var(--card2);
-  flex: none;
+.sheet.out {
+  animation: sheetDown 0.18s ease-in forwards;
+}
+.sheet-handle {
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--dim);
+  margin: 4px auto 12px;
+}
+.sheet-title {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  padding: 0 8px 10px;
+}
+.sheet-opt {
+  width: 100%;
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 15px;
-  font-weight: 800;
+  justify-content: space-between;
+  padding: 13px 8px;
+  font-size: 15.5px;
+  font-weight: 600;
   color: var(--tx2);
+  border-radius: 10px;
+  text-align: left;
 }
+.sheet-opt:active {
+  background: var(--card2);
+}
+.sheet-opt.on {
+  color: var(--acc);
+  font-weight: 800;
+}
+.sheet-check {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--acc);
+}
+@keyframes sheetUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes sheetDown {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+@keyframes dimIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes dimOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
 .nm {
   flex: 1;
   min-width: 0;
@@ -407,21 +491,6 @@ select {
 .nm .n2 {
   font-size: 12.5px;
   color: var(--tx3);
-  margin-top: 3px;
-  font-variant-numeric: tabular-nums;
-}
-.pr {
-  text-align: right;
-  flex: none;
-}
-.pr .p1 {
-  font-size: 15.5px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-.pr .p2 {
-  font-size: 13px;
-  font-weight: 700;
   margin-top: 3px;
   font-variant-numeric: tabular-nums;
 }
@@ -446,6 +515,16 @@ select {
 }
 .st.on {
   color: var(--star);
+}
+/* 터치·마우스 탭 후 남는 사각 포커스 아웃라인 제거.
+   키보드 탐색(:focus-visible)에서는 접근성을 위해 유지한다. */
+.st:focus:not(:focus-visible) {
+  outline: none;
+}
+.st:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 2px;
+  border-radius: 8px;
 }
 
 .fav-row {
@@ -505,6 +584,11 @@ select {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+/* 조회 결과 카드: 즐겨찾기 카드와 동일한 레이아웃이되 드래그 손잡이가 없어
+   좌측 패딩을 카드 기본 여백(15px)으로 되돌린다. */
+.fcard.res {
+  padding-left: 15px;
 }
 
 .empty {

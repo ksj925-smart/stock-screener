@@ -1,15 +1,7 @@
+import { useState } from "react";
 import type { SortKey, Stock } from "../types";
 import { capf } from "../lib/filters";
-
-const SORT_OPTIONS: { value: SortKey; label: string }[] = [
-  { value: "cap", label: "시가총액 큰 순" },
-  { value: "capa", label: "시가총액 작은 순" },
-  { value: "rsi", label: "RSI 낮은 순" },
-  { value: "pbr", label: "PBR 낮은 순" },
-  { value: "per", label: "PER 낮은 순" },
-  { value: "r", label: "등락률 높은 순" },
-  { value: "ra", label: "등락률 낮은 순" },
-];
+import { SortSheet, sortLabel } from "./SortSheet";
 
 interface ResultListProps {
   stocks: Stock[];
@@ -35,22 +27,31 @@ export function ResultList({
   onToggleFavorite,
   listRef,
 }: ResultListProps) {
+  const [sheetOpen, setSheetOpen] = useState(false);
+
   return (
     <>
       <div className="rbar">
         <div className="ttl">조회 결과 {stocks.length}종목</div>
-        <select
-          value={sortBy}
-          aria-label="정렬 기준"
-          onChange={(e) => onSortChange(e.target.value as SortKey)}
+        <button
+          type="button"
+          className="sortbtn"
+          aria-label={`정렬 기준: ${sortLabel(sortBy)}`}
+          aria-haspopup="listbox"
+          onClick={() => setSheetOpen(true)}
         >
-          {SORT_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+          {sortLabel(sortBy)}
+          <span className="caret" aria-hidden="true">
+            ▾
+          </span>
+        </button>
       </div>
+      <SortSheet
+        open={sheetOpen}
+        value={sortBy}
+        onSelect={onSortChange}
+        onClose={() => setSheetOpen(false)}
+      />
       <div ref={listRef}>
         {stocks.length === 0 ? (
           <div className="empty">
@@ -63,22 +64,29 @@ export function ResultList({
             const cls = s.r > 0 ? "up" : s.r < 0 ? "down" : "flat";
             const on = favorites.includes(s.c);
             return (
-              <div className="row" key={s.c}>
-                <div className="ic">{s.n[0]}</div>
+              <div className="fcard res" key={s.c}>
                 <div className="nm">
                   <div className="n1">{s.n}</div>
                   <div className="n2">
-                    {s.c} · {s.m ? "코스닥" : "코스피"} · {capf(s.cap)} · RSI{" "}
-                    {numOr(s.rsi, (v) => String(Math.round(v)))} · PBR{" "}
-                    {numOr(s.pbr, (v) => v.toFixed(2))} · PER{" "}
-                    {numOr(s.per, (v) => String(Math.round(v)))}
+                    {s.c} · {s.m ? "코스닥" : "코스피"} · {s.p.toLocaleString()}원{" "}
+                    <span className={cls}>
+                      {s.r > 0 ? "+" : ""}
+                      {s.r.toFixed(2)}%
+                    </span>
                   </div>
-                </div>
-                <div className="pr">
-                  <div className="p1">{s.p.toLocaleString()}원</div>
-                  <div className={`p2 ${cls}`}>
-                    {s.r > 0 ? "+" : ""}
-                    {s.r.toFixed(2)}%
+                  <div className="fmet">
+                    <span className="chip">
+                      시총 <b>{capf(s.cap)}</b>
+                    </span>
+                    <span className="chip">
+                      RSI <b>{numOr(s.rsi, (v) => String(Math.round(v)))}</b>
+                    </span>
+                    <span className="chip">
+                      PBR <b>{numOr(s.pbr, (v) => v.toFixed(2))}</b>
+                    </span>
+                    <span className="chip">
+                      PER <b>{numOr(s.per, (v) => String(Math.round(v)))}</b>
+                    </span>
                   </div>
                 </div>
                 <button

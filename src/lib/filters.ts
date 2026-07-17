@@ -208,12 +208,20 @@ export function computeHistograms(
   return hd;
 }
 
+/**
+ * 정렬 함수. RSI·PBR·PER은 낮은 순/높은 순을 대칭으로 제공한다.
+ * 앱이 "낮은 값이 좋다"는 가치 판단을 내장하지 않기 위함 (판단하지 않는 조회 도구).
+ * 결측(null)은 방향과 무관하게 항상 맨 뒤로 보낸다.
+ */
 export const SORTERS: Record<string, (x: Stock, y: Stock) => number> = {
-  cap: (x, y) => y.cap - x.cap,
-  capa: (x, y) => x.cap - y.cap,
-  rsi: (x, y) => (x.rsi ?? Infinity) - (y.rsi ?? Infinity),
-  pbr: (x, y) => (x.pbr ?? Infinity) - (y.pbr ?? Infinity),
-  per: (x, y) => (x.per ?? Infinity) - (y.per ?? Infinity),
-  r: (x, y) => y.r - x.r,
-  ra: (x, y) => x.r - y.r,
+  cap: (x, y) => y.cap - x.cap, // 시총 큰 순
+  capa: (x, y) => x.cap - y.cap, // 시총 작은 순
+  rsi: (x, y) => (x.rsi ?? Infinity) - (y.rsi ?? Infinity), // RSI 낮은 순
+  rsid: (x, y) => (y.rsi ?? -Infinity) - (x.rsi ?? -Infinity), // RSI 높은 순
+  pbr: (x, y) => (x.pbr ?? Infinity) - (y.pbr ?? Infinity), // PBR 낮은 순
+  pbrd: (x, y) => (y.pbr ?? -Infinity) - (x.pbr ?? -Infinity), // PBR 높은 순
+  per: (x, y) => (x.per ?? Infinity) - (y.per ?? Infinity), // PER 낮은 순
+  perd: (x, y) => (y.per ?? -Infinity) - (x.per ?? -Infinity), // PER 높은 순
+  r: (x, y) => y.r - x.r, // 등락률 높은 순
+  ra: (x, y) => x.r - y.r, // 등락률 낮은 순
 };
