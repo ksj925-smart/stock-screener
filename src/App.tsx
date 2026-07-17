@@ -183,7 +183,7 @@ function App() {
           />
         )}
 
-        <DataFooter />
+        <DataFooter finYear={loaded.data.meta.fin_year} />
       </div>
 
       {page === "search" && (

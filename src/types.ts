@@ -26,6 +26,8 @@ export interface ScreenerMeta {
   updated_at: string;
   count: number;
   excluded: number;
+  /** PBR·PER 계산에 채택된 최신 확정 결산연도 (예: "2025"). 구버전 데이터엔 없음 */
+  fin_year?: string | null;
 }
 
 export interface ScreenerData {

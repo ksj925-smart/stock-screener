@@ -21,12 +21,19 @@ from indicators import rsi
 from price_cache import append_prices, load_cache, save_cache
 
 
-def load_financials() -> dict[str, dict]:
+def load_financials() -> tuple[dict[str, dict], str | None]:
+    """(종목별 재무, 채택된 최신 결산연도) 반환.
+
+    결산연도는 종목별 'y'(fetch_financials가 기록) 중 최댓값 — 프론트 출처
+    문구("최근 확정 연간재무(YYYY년) 기준")에 동적으로 표기하기 위한 값.
+    """
     if not os.path.exists(FINANCIALS_PATH):
         print("경고: financials.json 없음 — PBR/PER는 전부 null로 출력됩니다.")
-        return {}
+        return {}, None
     with open(FINANCIALS_PATH, encoding="utf-8") as f:
-        return json.load(f).get("t", {})
+        fin = json.load(f).get("t", {})
+    years = [v["y"] for v in fin.values() if v.get("y")]
+    return fin, max(years) if years else None
 
 
 def main() -> None:
@@ -36,7 +43,7 @@ def main() -> None:
     cache = append_prices(load_cache(), base_date, stocks)
     save_cache(cache)
 
-    fin = load_financials()
+    fin, fin_year = load_financials()
 
     out, excluded = [], 0
     for s in stocks:
@@ -77,6 +84,8 @@ def main() -> None:
             "updated_at": dt.datetime.now().strftime("%Y-%m-%d %H:%M"),
             "count": len(out),
             "excluded": excluded,
+            # PBR·PER 계산에 채택된 최신 확정 결산연도 (출처 문구에 동적 표기)
+            "fin_year": fin_year,
         },
         "t": out,
     }

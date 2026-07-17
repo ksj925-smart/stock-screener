@@ -1,6 +1,12 @@
+interface DataFooterProps {
+  /** PBR·PER 계산에 채택된 최신 확정 결산연도 (screener.json meta.fin_year) */
+  finYear?: string | null;
+}
+
 /** 데이터 출처·유의사항 — SPEC 3-4 필수 표기. 문구를 임의로 수정하지 말 것.
- *  ("참고용" 문장은 2026-07-17 토스 입점 확인 조건으로 추가됨 — SPEC 3-4와 일치) */
-export function DataFooter() {
+ *  ("참고용" 문장은 2026-07-17 토스 입점 확인 조건으로 추가됨 — SPEC 3-4와 일치)
+ *  (재무 기준 시점 문장은 2026-07-18 사용자 확정으로 추가됨 — 연도는 데이터에서 동적) */
+export function DataFooter({ finYear }: DataFooterProps) {
   return (
     <footer>
       <p>
@@ -9,6 +15,9 @@ export function DataFooter() {
         <br />
         재무: 금융위원회 기업재무정보(공공데이터포털)
         <br />전 영업일 종가 기준이며 실시간 시세가 아닙니다.
+        <br />
+        PBR·PER은 최근 확정 연간재무{finYear ? `(${finYear}년)` : ""} 기준으로
+        계산되며, 증권사·포털의 최근 4분기(TTM) 기준 값과 다를 수 있습니다.
       </p>
       <p>
         <b>유의사항</b>
