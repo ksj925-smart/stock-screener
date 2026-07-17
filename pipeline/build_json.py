@@ -62,7 +62,9 @@ def main() -> None:
                 "m": s["market"],
                 "p": s["close"],
                 "r": round(s["rate"], 2),
-                "cap": round(s["cap"], 2),
+                # 시총은 조 단위 소수 4자리(=1억 해상도). 2자리로 자르면 100억 미만이
+                # 전부 0.01/0.00으로 뭉개져 소형주 시총이 "100억"/"0억"으로 표시된다.
+                "cap": round(s["cap"], 4),
                 "rsi": rsi_val,
                 "pbr": pbr,
                 "per": per,
