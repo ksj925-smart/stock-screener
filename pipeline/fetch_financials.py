@@ -34,7 +34,11 @@ def fetch_crno_map() -> dict[str, str]:
             return {
                 it["srtnCd"][-6:]: it["crno"]
                 for it in items
-                if it.get("srtnCd") and it.get("crno")
+                # 외국법인은 crno가 더미('0000000000000')로 내려와 전부 같은
+                # (엉뚱한) 재무가 붙는다 — 매핑에서 제외해 PBR/PER 결측 처리.
+                if it.get("srtnCd")
+                and it.get("crno")
+                and it["crno"].strip("0") != ""
             }
     sys.exit("KRX 상장종목정보를 가져오지 못했습니다.")
 
@@ -64,6 +68,9 @@ def select_financials(rows: list[dict]) -> dict | None:
     이건 연결이 있는데 별도를 고르는 '우회'가 아니라, 유일하게 존재하는 데이터를
     쓰는 것이다. (정렬상 연결이 먼저이므로, 연결에 자본총계가 있으면 항상 연결이 선택됨.)
     """
+    # 표시통화가 원화가 아닌 재무제표(예: 두산밥캣 USD)는 제외 — 원 단위로
+    # 오독하면 PBR/PER이 환율 배수(~1,400배)로 왜곡된다. 환산 대신 결측 처리.
+    rows = [r for r in rows if r.get("curCd", "KRW") == "KRW"]
     # 연결(110) 우선 정렬 → 자본총계가 있는 첫 재무제표를 채택
     rows = sorted(
         rows, key=lambda r: 0 if str(r.get("fnclDcd", "")).startswith("110") else 1

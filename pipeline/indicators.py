@@ -8,6 +8,12 @@ def rsi(closes: list[float], period: int = RSI_PERIOD) -> float | None:
     if len(closes) < period + 1:
         return None
 
+    # 거래정지 등으로 RSI 윈도우 전체에 가격 변동이 없으면 계산 불가(결측).
+    # avg_gain=avg_loss=0이라 수학적으로 정의되지 않는데, 아래 avg_loss==0
+    # 분기만으로는 100이 반환되어 'RSI 높은 순' 최상단을 오염시킨다.
+    if len(set(closes[-(period + 1):])) == 1:
+        return None
+
     gains, losses = [], []
     for i in range(1, len(closes)):
         diff = closes[i] - closes[i - 1]
