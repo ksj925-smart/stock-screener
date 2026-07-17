@@ -83,15 +83,21 @@ def select_financials(rows: list[dict]) -> dict | None:
     return None
 
 
-def fetch_summary(crno: str, biz_year: str) -> dict | None:
-    """법인 1개의 요약재무제표에서 자본총계/당기순이익을 얻는다."""
+def fetch_summary(crno: str, accept_years: list[str]) -> dict | None:
+    """법인 1개의 요약재무제표에서 '가용한 최신 결산연도'의 자본총계/당기순이익을 얻는다.
+
+    bizYear를 지정하지 않고 전 연도를 받아(회사당 보통 연 2행 × 10년 내외),
+    accept_years(최신 연도 우선 정렬)를 순회하며 처음 채택 가능한 연도를 쓴다.
+    → 최신 결산 미제출 회사는 자동으로 직전 연도로 폴백되고, 어느 연도를
+    썼는지 결과에 "y"로 남긴다(디버깅용). accept_years 밖의 낡은 재무는
+    쓰지 않는다(결측이 낡은 값보다 낫다).
+    """
     query = {
         "serviceKey": API_KEY,
         "resultType": "json",
-        "numOfRows": 20,
+        "numOfRows": 100,
         "pageNo": 1,
         "crno": crno,
-        "bizYear": biz_year,
     }
     try:
         res = requests.get(FINANCE_API, params=query, timeout=REQUEST_TIMEOUT)
@@ -100,7 +106,12 @@ def fetch_summary(crno: str, biz_year: str) -> dict | None:
         rows = body.get("items", {}).get("item", [])
         if isinstance(rows, dict):
             rows = [rows]
-        return select_financials(rows)
+        for year in accept_years:
+            picked = select_financials([r for r in rows if r.get("bizYear") == year])
+            if picked:
+                picked["y"] = year
+                return picked
+        return None
     except (requests.RequestException, ValueError, KeyError):
         return None
 
@@ -112,15 +123,18 @@ def main() -> None:
     target_codes = {s["code"] for s in stocks}
 
     crno_map = {c: crno for c, crno in fetch_crno_map().items() if c in target_codes}
-    biz_year = str(dt.date.today().year - 1)  # 직전 사업연도 확정 재무
+    # 가용한 최신 결산연도를 자동 선택: 최신(작년) 우선, 미제출이면 직전 연도 폴백.
+    # 그보다 낡은 재무는 결측 처리 (연도를 하드코딩하지 않으므로 해마다 자동 갱신됨).
+    this_year = dt.date.today().year
+    accept_years = [str(this_year - 1), str(this_year - 2)]
     print(
         f"대상 {len(target_codes)}종목 중 crno 매핑 {len(crno_map)}건, "
-        f"사업연도 {biz_year} 기준 재무 수집 시작"
+        f"결산연도 {accept_years[0]}(폴백 {accept_years[1]}) 재무 수집 시작"
     )
 
     out: dict[str, dict] = {}
     for i, (code, crno) in enumerate(crno_map.items(), 1):
-        data = fetch_summary(crno, biz_year)
+        data = fetch_summary(crno, accept_years)
         if data:
             out[code] = data
         if i % 100 == 0:
@@ -130,15 +144,17 @@ def main() -> None:
     os.makedirs(os.path.dirname(FINANCIALS_PATH), exist_ok=True)
     with open(FINANCIALS_PATH, "w", encoding="utf-8") as f:
         json.dump(
-            {"bizYear": biz_year, "updated": dt.date.today().isoformat(), "t": out},
+            {"updated": dt.date.today().isoformat(), "t": out},
             f,
             ensure_ascii=False,
         )
     no_crno = len(target_codes) - len(crno_map)
     missing = len(crno_map) - len(out)
+    year_dist = {y: sum(1 for v in out.values() if v["y"] == y) for y in accept_years}
     print(
         f"완료: {len(out)}건 저장 | crno 매핑 실패 {no_crno}건 | "
-        f"재무 결측 {missing}건 | 대상 {len(target_codes)}종목 ({FINANCIALS_PATH})"
+        f"재무 결측 {missing}건 | 연도 분포 {year_dist} | "
+        f"대상 {len(target_codes)}종목 ({FINANCIALS_PATH})"
     )
 
 
