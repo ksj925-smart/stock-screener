@@ -20,7 +20,8 @@ import { CountBar } from "./components/CountBar";
 import { ResultList } from "./components/ResultList";
 import { FavList } from "./components/FavList";
 import { DataFooter } from "./components/DataFooter";
-import { BannerAd } from "./components/BannerAd";
+// 광고(BannerAd)는 1차 출시 범위에서 제외 — 사업자 등록 후 후속 업데이트로 복원
+// (import하지 않아야 테스트 광고 관련 코드가 번들에서 완전히 빠진다)
 
 type Page = "search" | "fav";
 
@@ -109,7 +110,7 @@ function App() {
         )}
 
         <header>
-          <h1>{page === "fav" ? "즐겨찾기" : "주식 조건 조회"}</h1>
+          <h1>{page === "fav" ? "즐겨찾기" : "내 조건 주식찾기"}</h1>
           <div className="basis">
             {formatBaseDate(loaded.data.meta.base_date)} 종가 기준 · 실시간 아님
           </div>
@@ -160,8 +161,6 @@ function App() {
             <button type="button" className="reset" onClick={resetFilters}>
               조건 초기화
             </button>
-
-            <BannerAd />
 
             <ResultList
               stocks={out}

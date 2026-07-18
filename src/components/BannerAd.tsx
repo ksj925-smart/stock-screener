@@ -1,8 +1,13 @@
 import { useEffect, useRef } from "react";
 import { TossAds } from "@apps-in-toss/web-framework";
 
-// TODO: 출시 전에 앱인토스 콘솔에서 발급한 배너 광고그룹 ID로 변경하세요.
-const BANNER_AD_GROUP_ID = "ait-ad-test-banner-id";
+// ⚠️ 광고는 1차 출시 범위에서 제외됨 (2026-07-18 검토 반려 대응).
+//   - 인앱 광고는 사업자 등록이 필요한데 현재 미등록이라 실제 광고그룹 ID를
+//     발급받을 수 없고, 출시 번들에 테스트 ID를 넣을 수 없음.
+//   - 이 컴포넌트는 App에서 사용하지 않아 번들에 포함되지 않으며(tree-shake),
+//     사업자 등록 후 VITE_AD_GROUP_ID 설정 + App에서 <BannerAd /> 복원으로
+//     후속 업데이트에서 다시 붙인다. ID를 소스에 하드코딩하지 말 것.
+const BANNER_AD_GROUP_ID: string = import.meta.env.VITE_AD_GROUP_ID ?? "";
 
 let initialized = false;
 
@@ -18,6 +23,7 @@ export function BannerAd() {
     if (!el) return;
     let destroyed: (() => void) | undefined;
     try {
+      if (!BANNER_AD_GROUP_ID) return; // 광고그룹 ID 미설정 시 아무것도 하지 않음
       if (!TossAds.attachBanner.isSupported()) return;
       if (!initialized) {
         TossAds.initialize({});
