@@ -17,7 +17,7 @@ import os
 
 from config import FINANCIALS_PATH, OUTPUT_PATH
 from fetch_prices import fetch_latest_prices
-from indicators import rsi
+from indicators import is_flat, rsi
 from price_cache import append_prices, load_cache, save_cache
 
 
@@ -45,10 +45,15 @@ def main() -> None:
 
     fin, fin_year = load_financials()
 
-    out, excluded = [], 0
+    out, excluded, halted = [], 0, 0
     for s in stocks:
         closes = [c for _, c in cache.get(s["code"], [])]
         rsi_val = rsi(closes)
+        # 거래정지 추정: RSI 윈도우 무변동(= RSI를 결측 처리한 바로 그 판정).
+        # 새로 계산하지 않고 같은 함수를 재사용해 두 값의 정합을 보장한다.
+        is_halted = is_flat(closes)
+        if is_halted:
+            halted += 1
 
         pbr = per = None
         f = fin.get(s["code"])
@@ -75,6 +80,9 @@ def main() -> None:
                 "rsi": rsi_val,
                 "pbr": pbr,
                 "per": per,
+                # h=1: 30영업일 가격 무변동(거래정지 추정). 프론트의 '거래 없는
+                # 종목 빼기' 토글용. 평시 종목은 필드를 생략해 용량을 아낀다.
+                **({"h": 1} if is_halted else {}),
             }
         )
 
@@ -94,7 +102,10 @@ def main() -> None:
     with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
     size_kb = os.path.getsize(OUTPUT_PATH) / 1024
-    print(f"완료: {len(out)}종목, {size_kb:.0f}KB → {OUTPUT_PATH}")
+    print(
+        f"완료: {len(out)}종목, {size_kb:.0f}KB | 거래정지 추정 {halted}종목 "
+        f"→ {OUTPUT_PATH}"
+    )
 
 
 if __name__ == "__main__":

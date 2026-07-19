@@ -289,6 +289,34 @@ h1 {
   color: var(--tx3);
 }
 
+/* 토글 2개 가로 배치 — 슬라이더 카드의 폰트/여백/스위치 스타일을 그대로 쓴다.
+   375px에서 라벨이 잘리지 않도록 각 셀은 라벨 위·스위치 아래 2단 구조. */
+.tgrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding-top: 13px;
+}
+.tgcell {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px 0;
+}
+.tglab {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 15px;
+  color: var(--tx2);
+  line-height: 1.3;
+}
+/* 툴팁은 그리드 전체 폭을 쓴다 (셀 안에 넣으면 열 폭이 흔들림) */
+.tgtip {
+  grid-column: 1 / -1;
+  margin: 2px 0 0;
+}
+
 .tg {
   display: flex;
   align-items: center;

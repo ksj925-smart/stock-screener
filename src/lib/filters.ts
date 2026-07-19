@@ -154,6 +154,7 @@ export function applyFilters(
   ranges: Ranges,
   market: "all" | "0" | "1",
   noLoss: boolean,
+  noHalt: boolean,
 ): { out: Stock[]; excludedMissing: number } {
   const rng = {} as Record<FilterKey, [number, number]>;
   for (const f of FILTERS) {
@@ -163,6 +164,7 @@ export function applyFilters(
   const out = stocks.filter((s) => {
     if (market !== "all" && s.m !== +market) return false;
     if (noLoss && (s.per == null || s.per <= 0)) return false;
+    if (noHalt && s.h) return false;
     for (const f of FILTERS) {
       const [a, b] = rng[f.k];
       const [pa, pb] = ranges[f.k];
@@ -186,10 +188,12 @@ export function computeHistograms(
   stocks: Stock[],
   market: "all" | "0" | "1",
   noLoss: boolean,
+  noHalt: boolean,
 ): Record<FilterKey, number[]> {
   const uni = stocks.filter((s) => {
     if (market !== "all" && s.m !== +market) return false;
     if (noLoss && (s.per == null || s.per <= 0)) return false;
+    if (noHalt && s.h) return false;
     return true;
   });
   const hd = {} as Record<FilterKey, number[]>;

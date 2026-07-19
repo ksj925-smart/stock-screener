@@ -3,6 +3,18 @@
 from config import RSI_PERIOD
 
 
+def is_flat(closes: list[float], period: int = RSI_PERIOD) -> bool:
+    """RSI 윈도우(최근 period+1 종가) 동안 가격이 한 번도 변하지 않았는지.
+
+    거래정지 '추정' 신호다. 시세 API에 거래정지 플래그가 없어 가격 무변동을
+    프록시로 쓴다. RSI 결측 판정과 screener.json의 'h' 필드가 같은 이 함수를
+    쓰므로 두 값이 어긋날 일이 없다. 데이터가 부족하면 판정하지 않는다(False).
+    """
+    if len(closes) < period + 1:
+        return False
+    return len(set(closes[-(period + 1):])) == 1
+
+
 def rsi(closes: list[float], period: int = RSI_PERIOD) -> float | None:
     """종가 시계열(과거→최신)로 RSI를 계산한다. 데이터 부족 시 None."""
     if len(closes) < period + 1:
@@ -11,7 +23,7 @@ def rsi(closes: list[float], period: int = RSI_PERIOD) -> float | None:
     # 거래정지 등으로 RSI 윈도우 전체에 가격 변동이 없으면 계산 불가(결측).
     # avg_gain=avg_loss=0이라 수학적으로 정의되지 않는데, 아래 avg_loss==0
     # 분기만으로는 100이 반환되어 'RSI 높은 순' 최상단을 오염시킨다.
-    if len(set(closes[-(period + 1):])) == 1:
+    if is_flat(closes, period):
         return None
 
     gains, losses = [], []

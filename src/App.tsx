@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+
 import "./App.css";
 
 import type { LoadResult } from "./data/loadScreener";
@@ -36,6 +37,10 @@ function App() {
   const [page, setPage] = useState<Page>("search");
   const [market, setMarket] = useState<MarketFilter>("all");
   const [noLoss, setNoLoss] = useState(true);
+  // 거래정지 추정(h) 제외 토글. 기본 OFF — 적자 제외와 달리 지표가 성립하지
+  // 않는 경우가 아니라 '추정'이므로, 켤지는 사용자가 정한다.
+  const [noHalt, setNoHalt] = useState(false);
+  const [haltTipOpen, setHaltTipOpen] = useState(false);
   const [sortBy, setSortBy] = useState<SortKey>("cap");
   const [ranges, setRanges] = useState<Ranges>(DEFAULT_RANGES);
   const { favorites, toggle, reorder } = useFavorites();
@@ -54,15 +59,15 @@ function App() {
   }, [stocks]);
 
   const histograms = useMemo(
-    () => computeHistograms(stocks, market, noLoss),
-    [stocks, market, noLoss],
+    () => computeHistograms(stocks, market, noLoss, noHalt),
+    [stocks, market, noLoss, noHalt],
   );
 
   const { out, excludedMissing } = useMemo(() => {
-    const res = applyFilters(stocks, ranges, market, noLoss);
+    const res = applyFilters(stocks, ranges, market, noLoss, noHalt);
     res.out.sort(SORTERS[sortBy]);
     return res;
-  }, [stocks, ranges, market, noLoss, sortBy]);
+  }, [stocks, ranges, market, noLoss, noHalt, sortBy]);
 
   const summaryParts = useMemo(() => {
     const parts: string[] = [];
@@ -81,8 +86,9 @@ function App() {
       );
     }
     if (noLoss) parts.push("적자 제외");
+    if (noHalt) parts.push("거래없음 제외");
     return parts;
-  }, [ranges, market, noLoss]);
+  }, [ranges, market, noLoss, noHalt]);
 
   const setRange = (k: FilterKey, r: [number, number]) =>
     setRanges((prev) => ({ ...prev, [k]: r }));
@@ -143,18 +149,49 @@ function App() {
                   onChange={(r) => setRange(f.k, r)}
                 />
               ))}
-              <div className="f">
-                <div className="tg">
-                  <span>적자 회사 빼고 보기</span>
+              {/* 토글 2개를 한 줄에 나란히 — 세로 스크롤 부담을 줄인다.
+                  각 셀은 [라벨(+ⓘ)] 위 / [스위치] 아래 구조라 375px에서도
+                  라벨이 잘리지 않는다. */}
+              <div className="f tgrid">
+                <div className="tgcell">
+                  <div className="tglab">적자 회사 빼기</div>
                   <button
                     type="button"
                     role="switch"
                     aria-checked={noLoss}
-                    aria-label="적자 회사 빼고 보기"
+                    aria-label="적자 회사 빼기"
                     className={`sw${noLoss ? " on" : ""}`}
                     onClick={() => setNoLoss((v) => !v)}
                   />
                 </div>
+                <div className="tgcell">
+                  <div className="tglab">
+                    거래 없는 종목 빼기
+                    <button
+                      type="button"
+                      className={`info${haltTipOpen ? " on" : ""}`}
+                      aria-label={`거래 없는 종목 빼기 설명 ${haltTipOpen ? "닫기" : "보기"}`}
+                      aria-expanded={haltTipOpen}
+                      onClick={() => setHaltTipOpen((v) => !v)}
+                    >
+                      i
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={noHalt}
+                    aria-label="거래 없는 종목 빼기"
+                    className={`sw${noHalt ? " on" : ""}`}
+                    onClick={() => setNoHalt((v) => !v)}
+                  />
+                </div>
+                {haltTipOpen && (
+                  <div className="tip on tgtip">
+                    최근 3주 동안 주가가 한 번도 변하지 않은 종목이에요. 거래정지
+                    상태일 수 있어요.
+                  </div>
+                )}
               </div>
             </div>
 

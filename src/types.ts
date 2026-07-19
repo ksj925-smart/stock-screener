@@ -19,6 +19,12 @@ export interface Stock {
   pbr: number | null;
   /** PER. 적자면 음수 또는 null */
   per: number | null;
+  /**
+   * 1이면 최근 3주(15영업일) 가격 무변동 — 거래정지 '추정'.
+   * 시세 API에 거래정지 플래그가 없어 가격 무변동을 프록시로 쓴다.
+   * 평시 종목은 필드 자체가 없다(용량 절감).
+   */
+  h?: 1;
 }
 
 export interface ScreenerMeta {
