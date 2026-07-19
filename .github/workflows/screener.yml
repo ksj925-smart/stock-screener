@@ -34,6 +34,14 @@ jobs:
           DATA_GO_KR_API_KEY: ${{ secrets.DATA_GO_KR_API_KEY }}
         run: python fetch_financials.py
 
+      # 빌드가 덮어쓰기 전의 기준일을 기록해 둔다. 신선도 검증은 커밋 이후에
+      # 돌기 때문에, 그때 HEAD를 보면 이미 새 파일이라 비교가 무의미해진다.
+      - name: Record previous base_date
+        run: |
+          prev=$(python -c "import json;print(json.load(open('docs/screener.json',encoding='utf-8'))['meta']['base_date'])" 2>/dev/null || echo "")
+          echo "이전 기준일: ${prev:-(없음)}"
+          echo "PREVIOUS_BASE_DATE=$prev" >> "$GITHUB_ENV"
+
       - name: Build screener.json
         working-directory: pipeline
         env:
@@ -45,5 +53,17 @@ jobs:
           git config user.name "screener-bot"
           git config user.email "actions@users.noreply.github.com"
           git add docs/screener.json data/
-          git diff --cached --quiet || git commit -m "chore: update screener.json"
-          git push
+          if git diff --cached --quiet; then
+            echo "변경 없음 — 커밋 건너뜀 (기준일이 갱신되지 않았을 수 있음)"
+          else
+            git commit -m "chore: update screener.json"
+            git push
+          fi
+
+      # 빌드 성공 != 새 데이터. 업스트림이 신규 영업일 시세를 안 올리면 지난 기준일로
+      # 조용히 성공하므로, 기준일을 잡 요약에 노출하고 비정상 지연이면 실패시킨다.
+      # 커밋 뒤에 두는 이유: 이 스텝이 실패해도 실제로 진전된 데이터는 이미
+      # 배포되게 하려는 것. 게이트가 아니라 알림이다.
+      - name: Verify data freshness
+        working-directory: pipeline
+        run: python verify_freshness.py

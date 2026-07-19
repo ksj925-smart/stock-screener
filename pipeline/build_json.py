@@ -20,6 +20,8 @@ from fetch_prices import fetch_latest_prices
 from indicators import is_flat, rsi
 from price_cache import append_prices, load_cache, save_cache
 
+KST = dt.timezone(dt.timedelta(hours=9))
+
 
 def load_financials() -> tuple[dict[str, dict], str | None]:
     """(종목별 재무, 채택된 최신 결산연도) 반환.
@@ -89,7 +91,9 @@ def main() -> None:
     payload = {
         "meta": {
             "base_date": base_date,
-            "updated_at": dt.datetime.now().strftime("%Y-%m-%d %H:%M"),
+            # KST 고정. now()를 쓰면 러너(UTC)에서 돈 실행만 9시간 어긋나 기록돼
+            # 로컬 실행분과 섞였을 때 "언제 돌았나"를 판독할 수 없다.
+            "updated_at": dt.datetime.now(KST).strftime("%Y-%m-%d %H:%M"),
             "count": len(out),
             "excluded": excluded,
             # PBR·PER 계산에 채택된 최신 확정 결산연도 (출처 문구에 동적 표기)
