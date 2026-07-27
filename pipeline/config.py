@@ -56,9 +56,14 @@ FINANCIALS_PATH = os.path.join(DATA_DIR, "financials.json")
 # GitHub Pages(/docs)로 서빙 → VITE_SCREENER_URL로 연결
 OUTPUT_PATH = os.path.join(os.path.dirname(__file__), "..", "docs", "screener.json")
 
-# RSI 계산용 종가 보관 영업일 수
-CACHE_DAYS = 30
+# 종가 캐시 보관 영업일 수. 3개월(~60영업일) 차트를 서빙하려면 60일치가 필요해
+# RSI(14)용 30일에서 65일로 확대한다(홀리데이 갭 대비 버퍼 5일 포함).
+# ⚠️ 확대 후에도 RSI는 최근 RSI_WINDOW(30)일만 써서 기존 값과 100% 동일하게 유지한다
+#    (build_json에서 rsi(closes[-RSI_WINDOW:]) — Wilder 평활 시드가 달라지는 회귀 방지).
+CACHE_DAYS = 65
 RSI_PERIOD = 14
+# RSI 계산에 넣는 최근 종가 개수(캐시 확대와 무관하게 현행 RSI 값 보존용, 30일 유지)
+RSI_WINDOW = 30
 
 PAGE_SIZE = 1000
 REQUEST_TIMEOUT = 30

@@ -1,34 +1,68 @@
-# 평일 하루 4회 — 공공데이터 갱신(영업일 하루 뒤 13:00 KST 이후) 확보 (SPEC 7장)
+# 평일 하루 11회 — 공공데이터 갱신(영업일 하루 뒤 13:00 KST 이후) 확보 (SPEC 7장)
 #
-# 왜 4회인가: GitHub Actions 크론은 정시를 보장하지 않는다. 부하가 몰리면
+# 왜 여러 번인가: GitHub Actions 크론은 정시를 보장하지 않는다. 부하가 몰리면
 # 지연되거나 아예 스킵된다. 이 리포에서도 07-17 실행은 2시간 2분 지각했고
-# 07-20 실행은 통째로 스킵돼 수동 실행해야 했다. 출시 후엔 사용자가 며칠
-# 낡은 데이터를 보게 되므로, 한 번 실패해도 같은 날 안에 복구되도록 여러 번
-# 시도한다. 이미 최신이면 조기 종료(check_new_data)라 추가 비용은 미미하다.
+# 07-20 실행은 통째로 스킵돼 수동 실행해야 했다. 07-21엔 4회 모두 평균 약
+# 2시간(편차 40분 이내) 지연됐다. 출시 후엔 사용자가 며칠 낡은 데이터를 보게
+# 되므로, 한 번 실패해도 같은 날 안에 복구되도록 여러 번 시도한다. 이미
+# 최신이면 조기 종료(check_new_data)라 추가 비용은 미미하고, public 리포라
+# Actions 분도 무제한이다.
+#
+# 왜 11:13부터인가(지연 보정): 지연이 상수(~2h)에 가까워 '설정 시각 = 실행
+# 시각'이 아니라 '설정 시각 + 2h ≈ 실행 시각'으로 보고 역산해 앞당겼다. 앞쪽
+# 정시(11:13·12:13·13:13)를 1시간 간격으로 두면 지연이 0/1/2시간 어느 쪽이든
+# 첫 성공이 13:13으로 수렴한다(13:00 발행 직후). 정시(13:00) 전에 도는 크론은
+# 새 데이터가 없어 14초 만에 조기 종료되므로 무해하다. 사이의 :43 크론들은
+# 스킵·비정수 지연(예: 1h44m)에 대비한 백업이다.
+#
+# 왜 마지막이 21:13인가: 2시간 지연돼도(관측 최대 2h21m) 23:34로 자정을 넘지
+# 않는다. 자정을 넘으면 날짜가 바뀌어 concurrency·기준일 계산이 꼬일 수 있다.
 #
 # 분(minute)을 어중간하게 둔 이유: 정각·30분은 전 세계 크론이 몰려 지연·스킵
 # 확률이 가장 높은 시간대다.
+#
+# 배포(SPEC v1.3): screener.json 커밋(브랜치 영속화)에 더해, 종목별 3개월 종가
+# 시계열(docs/series/*.json)을 빌드 시점에 생성해 Pages 아티팩트로 배포한다.
+# series는 git에 커밋하지 않으므로(.gitignore) 2,578개 파일이 매일 바뀌어도
+# 히스토리가 누적되지 않는다. ⚠️ 이 워크플로는 Pages Source가 "GitHub Actions"로
+# 설정돼 있어야 동작한다(Settings → Pages → Build and deployment → Source).
 name: build-screener-json
 
 on:
   schedule:
-    - cron: "37 5 * * 1-5" # 14:37 KST
-    - cron: "47 7 * * 1-5" # 16:47 KST
-    - cron: "17 10 * * 1-5" # 19:17 KST
-    - cron: "53 12 * * 1-5" # 21:53 KST
+    # cron은 UTC. KST = UTC+9. 앞쪽을 촘촘히 둬 첫 성공을 13시대로 끌어온다.
+    - cron: "13 2 * * 1-5" # 11:13 KST
+    - cron: "43 2 * * 1-5" # 11:43 KST
+    - cron: "13 3 * * 1-5" # 12:13 KST
+    - cron: "43 3 * * 1-5" # 12:43 KST
+    - cron: "13 4 * * 1-5" # 13:13 KST
+    - cron: "43 4 * * 1-5" # 13:43 KST
+    - cron: "43 5 * * 1-5" # 14:43 KST
+    - cron: "43 6 * * 1-5" # 15:43 KST
+    - cron: "13 8 * * 1-5" # 17:13 KST
+    - cron: "13 10 * * 1-5" # 19:13 KST
+    - cron: "13 12 * * 1-5" # 21:13 KST (2h 지연돼도 23:13 — 자정 이전)
   workflow_dispatch:
     inputs:
       refresh_financials:
         description: "재무 데이터(분기 1회)도 갱신할지"
         type: boolean
         default: false
+      force_build:
+        description: "새 데이터가 없어도 강제로 빌드·배포 (첫 Pages 전환/재배포용)"
+        type: boolean
+        default: false
 
+# 브랜치 커밋(contents)과 Pages 아티팩트 배포(pages·id-token) 둘 다 필요.
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 # 크론이 지연되면 두 실행이 겹칠 수 있다. 겹치면 둘 다 커밋을 만들어 뒤쪽
 # push가 non-fast-forward로 실패한다. 취소하지 않고 줄 세워서 직렬화한다
 # (대기 중인 실행은 앞 실행이 끝난 뒤 체크아웃하므로 항상 최신 기준이다).
+# 직렬화되므로 Pages 배포도 동시에 겹치지 않는다.
 concurrency:
   group: build-screener-json
   cancel-in-progress: false
@@ -36,10 +70,13 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      did_build: ${{ steps.gate.outputs.did_build }}
     env:
       # 재무 갱신을 명시적으로 요청했다면 새 시세가 없어도 다시 빌드해야 한다
-      # (financials.json이 바뀌면 PBR·PER이 달라지므로).
-      FORCE_BUILD: ${{ github.event_name == 'workflow_dispatch' && inputs.refresh_financials }}
+      # (financials.json이 바뀌면 PBR·PER이 달라지므로). force_build는 첫 Pages
+      # 전환 시 새 데이터 없이도 최초 아티팩트를 만들어 배포하기 위한 것.
+      FORCE_BUILD: ${{ github.event_name == 'workflow_dispatch' && (inputs.refresh_financials || inputs.force_build) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -65,7 +102,7 @@ jobs:
           echo "이전 기준일: ${prev:-(없음)}"
           echo "PREVIOUS_BASE_DATE=$prev" >> "$GITHUB_ENV"
 
-      # 하루 4회 중 대부분은 '이미 최신'이다. 그때마다 전종목을 재수집해 커밋하면
+      # 하루 여러 번 중 대부분은 '이미 최신'이다. 그때마다 전종목을 재수집해 커밋하면
       # updated_at만 바뀐 커밋이 쌓여 리포가 불필요하게 커진다. basDt별 건수만
       # 싸게 확인해 새 데이터가 있을 때만 빌드한다.
       - name: Check for new data
@@ -75,15 +112,40 @@ jobs:
           DATA_GO_KR_API_KEY: ${{ secrets.DATA_GO_KR_API_KEY }}
         run: python check_new_data.py
 
+      # 이후 스텝(빌드·series·커밋·아티팩트업로드·배포)의 단일 게이트.
+      # 새 데이터가 있거나(has_new) 강제 빌드일 때만 진행한다. 그 외엔 조기 종료:
+      # 아무것도 배포하지 않으므로 직전 배포 아티팩트(screener.json+series 포함)가
+      # 그대로 살아있다(Pages는 마지막 성공 배포를 유지).
+      - name: Resolve build gate
+        id: gate
+        run: |
+          if [ "${{ steps.check.outputs.has_new }}" = "true" ] || [ "${{ env.FORCE_BUILD }}" = "true" ]; then
+            echo "did_build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "did_build=false" >> "$GITHUB_OUTPUT"
+            echo "이미 최신 — 빌드·배포 건너뜀 (직전 Pages 배포 유지)"
+          fi
+
       - name: Build screener.json
-        if: steps.check.outputs.has_new == 'true' || env.FORCE_BUILD == 'true'
+        if: steps.gate.outputs.did_build == 'true'
         working-directory: pipeline
         env:
           DATA_GO_KR_API_KEY: ${{ secrets.DATA_GO_KR_API_KEY }}
         run: python build_json.py
 
-      - name: Commit & push
-        if: steps.check.outputs.has_new == 'true' || env.FORCE_BUILD == 'true'
+      # screener.json 생성(캐시 append) 직후, 같은 price_cache에서 종목별 3개월
+      # 시계열을 생성한다. docs/series/ 는 gitignore라 커밋되지 않고, 아래
+      # 아티팩트에만 포함돼 배포된다.
+      - name: Build series files
+        if: steps.gate.outputs.did_build == 'true'
+        working-directory: pipeline
+        run: python build_series.py
+
+      # screener.json + data/(캐시)만 커밋한다. series는 커밋하지 않는다.
+      # 이 커밋은 데이터 영속화 + 스케줄 활동 집계(60일 무커밋 자동 비활성화 방지)
+      # 목적이며, 서빙은 아래 Pages 아티팩트가 담당한다.
+      - name: Commit & push (screener.json + data only; series is gitignored)
+        if: steps.gate.outputs.did_build == 'true'
         run: |
           git config user.name "screener-bot"
           git config user.email "actions@users.noreply.github.com"
@@ -95,6 +157,15 @@ jobs:
             git push
           fi
 
+      # docs/ 전체(screener.json + 생성된 series/ + skills/ + .nojekyll)를 Pages
+      # 아티팩트로 업로드. 배포마다 아티팩트를 새로 만들므로 series도 매 배포 시
+      # 방금 생성한 최신본이 항상 포함된다.
+      - name: Upload Pages artifact
+        if: steps.gate.outputs.did_build == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
       # 빌드 성공 != 새 데이터. 업스트림이 신규 영업일 시세를 안 올리면 지난 기준일로
       # 조용히 성공하므로, 기준일을 잡 요약에 노출하고 비정상 지연이면 실패시킨다.
       # 커밋 뒤에 두는 이유: 이 스텝이 실패해도 실제로 진전된 데이터는 이미
@@ -102,3 +173,16 @@ jobs:
       - name: Verify data freshness
         working-directory: pipeline
         run: python verify_freshness.py
+
+  # 빌드가 아티팩트를 올렸을 때만 배포한다(조기 종료면 skip → 직전 배포 유지).
+  deploy:
+    needs: build
+    if: needs.build.outputs.did_build == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -13,6 +13,11 @@ dist/
 # 참고: data/price_cache.json, data/financials.json 은 RSI 누적·재무 캐시라
 #       GitHub Actions가 커밋해 영속화해야 하므로 gitignore하지 않는다 (SPEC 7장).
 
+# 종목별 3개월 종가 시계열(차트용). 매 배포 시 build_series.py가 생성해 Pages
+# 아티팩트로만 배포하고 git에는 커밋하지 않는다 → 2,578개 파일이 매일 바뀌어
+# 히스토리가 폭증하는 문제 회피(방식 B). 로컬/CI 생성분이 추적되지 않게 제외.
+docs/series/
+
 # --- 로그/OS ---
 *.log
 .DS_Store

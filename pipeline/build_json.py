@@ -15,7 +15,7 @@ import datetime as dt
 import json
 import os
 
-from config import FINANCIALS_PATH, OUTPUT_PATH
+from config import FINANCIALS_PATH, OUTPUT_PATH, RSI_WINDOW
 from fetch_prices import fetch_latest_prices
 from indicators import is_flat, rsi
 from price_cache import append_prices, load_cache, save_cache
@@ -50,7 +50,9 @@ def main() -> None:
     out, excluded, halted = [], 0, 0
     for s in stocks:
         closes = [c for _, c in cache.get(s["code"], [])]
-        rsi_val = rsi(closes)
+        # 캐시를 60일로 확대해도 RSI는 최근 RSI_WINDOW(30)일만 사용 → 기존 RSI 값 보존.
+        # (전체 closes를 넘기면 Wilder 평활 시드가 달라져 전 종목 RSI가 바뀌는 회귀 발생)
+        rsi_val = rsi(closes[-RSI_WINDOW:])
         # 거래정지 추정: RSI 윈도우 무변동(= RSI를 결측 처리한 바로 그 판정).
         # 새로 계산하지 않고 같은 함수를 재사용해 두 값의 정합을 보장한다.
         is_halted = is_flat(closes)
