@@ -183,6 +183,24 @@ export function applyFilters(
   return { out, excludedMissing };
 }
 
+/**
+ * 종목명·종목코드 부분 문자열 검색 (SPEC v1.2 개별 종목 검색).
+ * 시장 탭 범위는 존중하되 슬라이더/토글 조건은 적용하지 않는다(검색 우선).
+ * 초성 검색은 범위 밖 — 단순 substring 매칭.
+ */
+export function searchStocks(
+  stocks: Stock[],
+  market: "all" | "0" | "1",
+  query: string,
+): Stock[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  return stocks.filter((s) => {
+    if (market !== "all" && s.m !== +market) return false;
+    return s.n.toLowerCase().includes(q) || s.c.includes(q);
+  });
+}
+
 /** 히스토그램 bin 계산 (시장/적자 필터만 적용된 universe 기준) */
 export function computeHistograms(
   stocks: Stock[],

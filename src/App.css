@@ -62,6 +62,25 @@ button {
   font-size: inherit;
 }
 
+/* 터치·마우스 탭 뒤에 남는 포커스 아웃라인을 앱 전역에서 제거한다.
+   키보드 탐색(:focus-visible)에서는 접근성을 위해 아웃라인을 유지해서,
+   탭 키로 이동할 때만 보이고 손가락/마우스로 누를 때는 보이지 않게 한다.
+   검색·조건 저장/불러오기·카테고리 생성/이동/삭제·바텀시트 등 모든 버튼에 적용된다.
+
+   TDS/브라우저가 우리 CSS 뒤에 주입하는 `button:focus { outline: auto }`(노란 링)와
+   :focus-visible이 명시도(0,1,1)로 동점이라 소스 순서에서 밀린다. `:focus:focus-visible`로
+   써서 명시도(0,2,1)를 한 단계 높여, 키보드 포커스에서 우리 강조색 링이 이기게 한다.
+   `:not(:focus-visible)`(터치/마우스)은 이미 (0,2,1)이라 노란 링을 눌러 없앤다. */
+button:focus:not(:focus-visible),
+[role="button"]:focus:not(:focus-visible) {
+  outline: none;
+}
+button:focus:focus-visible,
+[role="button"]:focus:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 2px;
+}
+
 .wrap {
   max-width: 480px;
   margin: 0 auto;
@@ -472,6 +491,86 @@ h1 {
   font-weight: 800;
   color: var(--acc);
 }
+
+/* ── 3개월 주가 차트 시트 (v1.3) ─────────────────────────────
+   ⚠️ 규제: 순수 종가 라인만. 밴드·이평·마커·목표가·구간 색강조 금지.
+   선 색은 방향성 없는 민트 단색(--acc) — 등락 색(빨강/파랑)을 쓰면
+   색이 방향 판단을 유도하므로 중립색 원칙을 따른다. */
+.ch-head {
+  padding: 0 8px 12px;
+}
+.ch-name {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  color: var(--tx);
+}
+.ch-sub {
+  margin-top: 3px;
+  font-size: 13px;
+  color: var(--tx2);
+}
+.ch-body {
+  /* 로딩·에러·차트 어느 상태든 시트 높이가 튀지 않게 고정 */
+  height: 232px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.ch-chart {
+  flex: 1;
+  min-height: 0;
+  /* 375px에서도 축·라인이 잘리지 않도록 좌우 여백 최소화 */
+  margin: 0 -4px;
+}
+.ch-foot {
+  padding: 8px 8px 0;
+  font-size: 12px;
+  color: var(--tx3);
+  text-align: right;
+}
+.ch-msg {
+  text-align: center;
+  font-size: 14px;
+  color: var(--tx2);
+  padding: 24px 8px;
+}
+.ch-skel {
+  padding: 0 8px;
+}
+.ch-skel-bar {
+  height: 180px;
+  border-radius: 12px;
+  background: linear-gradient(
+    90deg,
+    var(--card2) 25%,
+    var(--line) 37%,
+    var(--card2) 63%
+  );
+  background-size: 400% 100%;
+  animation: chShimmer 1.2s ease-in-out infinite;
+}
+@keyframes chShimmer {
+  from {
+    background-position: 100% 50%;
+  }
+  to {
+    background-position: 0 50%;
+  }
+}
+.ch-close {
+  width: 100%;
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--card2);
+  color: var(--tx);
+  font-size: 15.5px;
+  font-weight: 700;
+}
+.ch-close:active {
+  background: var(--line);
+}
 @keyframes sheetUp {
   from {
     transform: translateY(100%);
@@ -509,6 +608,23 @@ h1 {
   flex: 1;
   min-width: 0;
 }
+/* 조회 결과의 종목 영역은 차트를 여는 버튼이다. 버튼 기본 스타일(가운데 정렬·
+   배경·폰트)을 상쇄해 기존 카드와 똑같이 보이게 한다. 세로 패딩을 주지 않아
+   레이아웃도 그대로다. */
+.nmbtn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  border-radius: 10px;
+}
+.nmbtn:active {
+  opacity: 0.6;
+}
 .nm .n1 {
   font-size: 16px;
   font-weight: 700;
@@ -544,19 +660,10 @@ h1 {
 .st.on {
   color: var(--star);
 }
-/* 터치·마우스 탭 후 남는 사각 포커스 아웃라인 제거.
-   키보드 탐색(:focus-visible)에서는 접근성을 위해 유지한다. */
-.st:focus:not(:focus-visible) {
-  outline: none;
-}
-.st:focus-visible {
-  outline: 2px solid var(--acc);
-  outline-offset: 2px;
-  border-radius: 8px;
-}
-
 .fav-row {
-  touch-action: none;
+  /* 세로 스크롤은 허용하고(pan-y), 드래그 재정렬은 손잡이(.grip)에만 맡긴다.
+     카드 전체에 touch-action:none을 주면 목록 터치 스크롤이 통째로 막힌다. */
+  touch-action: pan-y;
 }
 .fav-row.drag {
   opacity: 0.94;
@@ -786,6 +893,301 @@ nav button span {
   margin-left: 4px;
   vertical-align: 1px;
   font-style: normal;
+}
+
+/* ===== v1.2: 검색 · 조건 저장 · 카테고리 ===== */
+
+/* 개별 종목 검색 입력창 */
+.searchbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0 12px;
+  height: 44px;
+  margin-bottom: 12px;
+}
+.searchbar-ic {
+  color: var(--tx3);
+  font-size: 18px;
+  flex: none;
+  line-height: 1;
+}
+.searchbar-in {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--tx);
+  font-size: 15px;
+  font-family: inherit;
+  padding: 0;
+}
+.searchbar-in::placeholder {
+  color: var(--tx3);
+}
+.searchbar-in::-webkit-search-decoration,
+.searchbar-in::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+.searchbar-x {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--card2);
+  color: var(--tx3);
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+/* 조건 초기화 · 내 조건 두 버튼 한 줄 */
+.actionrow {
+  display: flex;
+  gap: 8px;
+  margin-top: 11px;
+}
+.actionrow .reset {
+  flex: 1;
+  width: auto;
+  margin-top: 0;
+}
+.condbtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.cbadge {
+  display: inline-block;
+  background: var(--acc-w);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: 9px;
+  padding: 1px 6px;
+  font-style: normal;
+}
+
+/* 조건 저장/불러오기 시트 */
+.sheet-empty {
+  padding: 18px 8px;
+  color: var(--tx3);
+  font-size: 14.5px;
+  text-align: center;
+}
+.sheet-note {
+  font-size: 13px;
+  color: var(--tx3);
+  line-height: 1.6;
+  padding: 8px;
+}
+.cond-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cond-load {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 8px;
+  border-radius: 10px;
+  text-align: left;
+}
+.cond-load:active {
+  background: var(--card2);
+}
+.cond-name {
+  min-width: 0;
+  font-size: 15.5px;
+  font-weight: 700;
+  color: var(--tx);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cond-apply {
+  flex: none;
+  margin-left: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--acc);
+}
+.cond-del {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  color: var(--tx3);
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.cond-del:active {
+  background: var(--card2);
+}
+.cond-save {
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.cond-saverow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* 텍스트 입력(조건 이름 · 폴더 이름 공용) */
+.txtin {
+  flex: 1;
+  min-width: 0;
+  background: var(--card2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--tx);
+  font-size: 15px;
+  font-family: inherit;
+  padding: 11px 12px;
+  outline: none;
+}
+.txtin::placeholder {
+  color: var(--tx3);
+}
+.txtin:focus {
+  border-color: var(--acc);
+}
+.txtin-btn {
+  flex: none;
+  background: var(--acc-w);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 11px 16px;
+  border-radius: 10px;
+}
+.txtin-btn:disabled {
+  opacity: 0.4;
+}
+
+/* 카테고리(폴더) 필터 칩 */
+.catbar {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+}
+.catbar::-webkit-scrollbar {
+  display: none;
+}
+.catchip {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  color: var(--tx2);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 12px;
+  border-radius: 16px;
+  white-space: nowrap;
+}
+.catchip.on {
+  background: var(--card2);
+  border-color: var(--acc);
+  color: var(--acc);
+  font-weight: 700;
+}
+.catchip.add {
+  color: var(--tx3);
+  border-style: dashed;
+}
+.cat-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+.catcreate {
+  margin-bottom: 10px;
+}
+.catdel {
+  display: inline-block;
+  margin: -2px 0 10px;
+  padding: 6px 10px;
+  font-size: 12.5px;
+  color: var(--tx3);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+.catdel:active {
+  background: var(--card2);
+}
+.cat-optname {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 즐겨찾기 행의 폴더 지정 칩 (.chip 기반, 배경만 다르게) */
+.catpill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: 1px dashed var(--line);
+  color: var(--tx3);
+}
+.catpill.set {
+  border-style: solid;
+  color: var(--tx2);
+}
+
+/* 한도 안내 등 일시 토스트 */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(
+    var(--barh) + var(--navh) + env(safe-area-inset-bottom) + 12px
+  );
+  transform: translateX(-50%);
+  background: rgba(28, 34, 45, 0.97);
+  color: var(--tx);
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 11px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+  z-index: 70;
+  max-width: 90%;
+  text-align: center;
+  animation: toastIn 0.2s ease-out;
+}
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
