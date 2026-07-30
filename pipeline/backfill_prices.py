@@ -29,14 +29,19 @@ from config import (
     REQUEST_TIMEOUT,
 )
 from fetch_prices import is_excluded
-from price_cache import save_cache
+from price_cache import append_prices, save_cache
 
 # 전종목이 한 페이지에 들어오도록 넉넉히 (basDt당 1콜). 실측 totalCount ≈ 2,880.
 FULL_ROWS = max(PAGE_SIZE, 4000)
 
 
-def fetch_day(bas_dt: str) -> dict[str, int] | None:
-    """basDt 하루치 종가 { '005930': 70500, ... }. 영업일 아니면 None."""
+def fetch_day(bas_dt: str) -> dict[str, dict] | None:
+    """basDt 하루치 종가·등락률 { '005930': {'close':70500,'rate':-1.2}, ... }.
+
+    등락률(fltRt)을 함께 받는 이유: 백필 구간 안에서 일어난 액면분할·병합을
+    감지해 소급 리베이스하려면 '조정된 전일가'(clpr/(1+fltRt/100))가 필요하다.
+    종가만 받으면 분할 경계에 점프가 남아 차트 스케일이 깨진다.
+    """
     query = {
         "serviceKey": API_KEY,
         "resultType": "json",
@@ -64,7 +69,10 @@ def fetch_day(bas_dt: str) -> dict[str, int] | None:
         if is_excluded(name):
             continue
         try:
-            out[it["srtnCd"][-6:]] = int(it["clpr"])
+            out[it["srtnCd"][-6:]] = {
+                "close": int(it["clpr"]),
+                "rate": float(it.get("fltRt") or 0),
+            }
         except (KeyError, ValueError):
             continue
     return out
@@ -72,7 +80,8 @@ def fetch_day(bas_dt: str) -> dict[str, int] | None:
 
 def main() -> None:
     days_needed = CACHE_DAYS
-    collected: list[tuple[str, dict[str, int]]] = []  # (base_date, {code: close})
+    # (base_date, {code: {'close':..,'rate':..}})
+    collected: list[tuple[str, dict[str, dict]]] = []
     day = dt.date.today()
     scanned = 0
     # 넉넉히 90일 이내에서 영업일 days_needed개를 찾는다 (공휴일 여유 포함)
@@ -91,10 +100,17 @@ def main() -> None:
 
     # 과거→현재 시간순으로 정렬해 캐시에 쌓는다 (RSI는 오래된 것부터 필요)
     collected.reverse()
+    # ⚠️ 매일 append와 똑같이 append_prices를 태운다. 직접 배열에 쌓으면
+    #    백필 구간 안의 액면분할·병합이 조정되지 않아 차트에 점프가 남는다
+    #    (예: 5:1 병합 종목의 과거 종가가 현재가의 1/5로 찍힘).
+    #    같은 함수를 재사용해 두 경로의 리베이스 동작이 갈리지 않게 한다.
     cache: dict[str, list[list]] = {}
     for base_date, prices in collected:
-        for code, close in prices.items():
-            cache.setdefault(code, []).append([base_date, close])
+        stocks = [
+            {"code": code, "close": v["close"], "rate": v["rate"]}
+            for code, v in prices.items()
+        ]
+        cache = append_prices(cache, base_date, stocks)
 
     save_cache(cache)
     print(

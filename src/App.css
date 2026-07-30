@@ -523,6 +523,20 @@ h1 {
   /* 375px에서도 축·라인이 잘리지 않도록 좌우 여백 최소화 */
   margin: 0 -4px;
 }
+/* 차트 터치 시 노란 포커스 링 제거.
+   전역 규칙은 button·[role=button]만 대상이라, Recharts가 만드는 래퍼
+   (.recharts-wrapper는 tabindex를 가짐)와 <svg>가 빠져 TDS가 주입하는
+   outline이 그대로 노출됐다. 차트 영역 전체를 같은 방식으로 처리한다.
+   키보드 탐색(:focus-visible)에서는 강조 링을 유지해 접근성을 지킨다. */
+.ch-chart:focus:not(:focus-visible),
+.ch-chart :focus:not(:focus-visible) {
+  outline: none;
+}
+.ch-chart:focus:focus-visible,
+.ch-chart :focus:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 2px;
+}
 .ch-foot {
   padding: 8px 8px 0;
   font-size: 12px;
