@@ -157,8 +157,12 @@ export function ChartSheet({ stock, onClose }: ChartSheetProps) {
                       tick={{ fill: "#68728a", fontSize: 11 }}
                       tickLine={false}
                       axisLine={false}
-                      width={52}
-                      tickFormatter={(v: number) => v.toLocaleString()}
+                      /* 7자리 종가(예: 1,401,000)도 잘리지 않을 폭.
+                         이전 52px에서는 "0,924.523"처럼 앞이 잘려 나갔다. */
+                      width={58}
+                      /* 주가는 원 단위 정수다. 파이프라인에서 이미 반올림하지만
+                         구버전 배포본이 캐시돼 있어도 소수가 보이지 않도록 방어한다. */
+                      tickFormatter={(v: number) => Math.round(v).toLocaleString()}
                     />
                     {/* 툴팁은 "날짜 + 종가"까지만. 판단 문구를 넣지 않는다. */}
                     <Tooltip
@@ -175,7 +179,7 @@ export function ChartSheet({ stock, onClose }: ChartSheetProps) {
                         payload?.[0]?.payload?.d ?? ""
                       }
                       formatter={(v) => [
-                        `${Number(v).toLocaleString()}원`,
+                        `${Math.round(Number(v)).toLocaleString()}원`,
                         "종가",
                       ]}
                     />

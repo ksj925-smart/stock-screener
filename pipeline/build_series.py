@@ -36,9 +36,14 @@ def main() -> None:
         if not tail:
             continue
         payload = {
-            "b": tail[-1][0],          # 기준일(마지막 종가 날짜) — UI "기준일 표기"용
+            "b": tail[-1][0],           # 기준일(마지막 종가 날짜) — UI "기준일 표기"용
             "d": [d for d, _ in tail],  # 날짜 축
-            "p": [p for _, p in tail],  # 종가
+            # 종가는 원 단위 정수로 내보낸다. 캐시에는 리베이스(÷5 등) 때문에
+            # 소수가 남아 있는데(예: 11011.6209), 그대로 서빙하면 툴팁에
+            # "10,924.523원"처럼 찍혀 백만 단위로 오인된다.
+            # ⚠️ 캐시 자체는 소수를 유지한다 — 반복 리베이스의 누적 오차와
+            #    RSI(30일 창) 값 변화를 막기 위해서다. 계산은 소수, 출력은 정수.
+            "p": [round(p) for _, p in tail],
         }
         with open(os.path.join(SERIES_DIR, f"{code}.json"), "w", encoding="utf-8") as f:
             json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
