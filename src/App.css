@@ -621,6 +621,9 @@ h1 {
   color: inherit;
   font: inherit;
   border-radius: 10px;
+  /* 즐겨찾기 카드 본문에서 세로 스와이프는 목록 스크롤로 남긴다.
+     재정렬 드래그는 손잡이(.grip, touch-action:none)만 담당한다. */
+  touch-action: pan-y;
 }
 .nmbtn:active {
   opacity: 0.6;

@@ -380,6 +380,7 @@ function App() {
             categories={categories}
             byCode={byCode}
             onToggleFavorite={handleToggleFavorite}
+            onSelectStock={setChartStock}
             onReorder={reorderVisible}
             onSetCategory={setCategory}
             onCreateCategory={createCategory}

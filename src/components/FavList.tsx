@@ -9,6 +9,8 @@ interface FavListProps {
   categories: FavCategory[];
   byCode: Record<string, Stock>;
   onToggleFavorite: (code: string) => void;
+  /** 종목명 영역을 누르면 3개월 주가 차트를 연다 */
+  onSelectStock: (s: Stock) => void;
   /** 화면에 보이는 목록 안에서 from→to 재정렬 */
   onReorder: (visibleCodes: string[], from: number, to: number) => void;
   onSetCategory: (code: string, cat: string | null) => void;
@@ -31,6 +33,7 @@ export function FavList({
   categories,
   byCode,
   onToggleFavorite,
+  onSelectStock,
   onReorder,
   onSetCategory,
   onCreateCategory,
@@ -297,15 +300,26 @@ export function FavList({
                   <i />
                 </div>
                 <div className="nm">
-                  <div className="n1">{s.n}</div>
-                  <div className="n2">
-                    {s.c} · {s.m ? "코스닥" : "코스피"} ·{" "}
-                    {s.p.toLocaleString()}원{" "}
-                    <span className={cls}>
-                      {s.r > 0 ? "+" : ""}
-                      {s.r.toFixed(2)}%
-                    </span>
-                  </div>
+                  {/* 종목명·시세 영역만 차트를 여는 버튼이다.
+                      폴더 칩(.catpill)은 그 자체가 버튼이라 이 버튼 안에 넣으면
+                      중첩이 되므로 .fmet은 버튼 밖 형제로 남긴다.
+                      손잡이(.grip)·별(.st)도 형제라 서로 간섭하지 않는다. */}
+                  <button
+                    type="button"
+                    className="nmbtn"
+                    aria-label={`${s.n} 3개월 주가 차트 보기`}
+                    onClick={() => onSelectStock(s)}
+                  >
+                    <div className="n1">{s.n}</div>
+                    <div className="n2">
+                      {s.c} · {s.m ? "코스닥" : "코스피"} ·{" "}
+                      {s.p.toLocaleString()}원{" "}
+                      <span className={cls}>
+                        {s.r > 0 ? "+" : ""}
+                        {s.r.toFixed(2)}%
+                      </span>
+                    </div>
+                  </button>
                   <div className="fmet">
                     <span className="chip">
                       시총 <b>{capf(s.cap)}</b>
