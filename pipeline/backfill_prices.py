@@ -34,6 +34,13 @@ from price_cache import append_prices, save_cache
 # 전종목이 한 페이지에 들어오도록 넉넉히 (basDt당 1콜). 실측 totalCount ≈ 2,880.
 FULL_ROWS = max(PAGE_SIZE, 4000)
 
+# 거슬러 올라가며 훑을 최대 캘린더 일수.
+# CACHE_DAYS(65)영업일 ≈ 91일이라 90일 한도로는 59일만 모여 3개월 차트가 모자랐다.
+# 110일이면 설·추석 같은 긴 연휴가 낀 시기에도 65영업일을 안전하게 확보한다.
+# 주말은 조회조차 안 하므로 실제 API 호출은 영업일 수(≈65~78콜)에 그치고,
+# 개발계정 10,000콜/일 한도 대비 1% 미만이다.
+SCAN_LIMIT_DAYS = 110
+
 
 def fetch_day(bas_dt: str) -> dict[str, dict] | None:
     """basDt 하루치 종가·등락률 { '005930': {'close':70500,'rate':-1.2}, ... }.
@@ -84,8 +91,8 @@ def main() -> None:
     collected: list[tuple[str, dict[str, dict]]] = []
     day = dt.date.today()
     scanned = 0
-    # 넉넉히 90일 이내에서 영업일 days_needed개를 찾는다 (공휴일 여유 포함)
-    while len(collected) < days_needed and scanned < 90:
+    # SCAN_LIMIT_DAYS 이내에서 영업일 days_needed개를 찾는다 (연휴 여유 포함)
+    while len(collected) < days_needed and scanned < SCAN_LIMIT_DAYS:
         scanned += 1
         day -= dt.timedelta(days=1)
         if day.weekday() >= 5:  # 토(5)·일(6)은 조회 안 함
