@@ -651,6 +651,8 @@ h1 {
   align-items: flex-start;
   padding: 11px 4px;
 }
+/* 아이콘은 SVG(icons.tsx)라 폰트 글리프 누락으로 깨지지 않는다.
+   색은 currentColor를 따라가므로 민트(--acc)가 그대로 적용된다. */
 .tut-ico {
   flex: none;
   width: 30px;
@@ -658,12 +660,9 @@ h1 {
   border-radius: 9px;
   background: var(--card2);
   color: var(--acc);
-  font-size: 15px;
-  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
-  line-height: 1;
 }
 .tut-it {
   font-size: 15px;
@@ -1015,6 +1014,15 @@ nav button {
 nav button.on {
   color: var(--acc);
 }
+/* SVG 아이콘 칸(.nav-ic)은 글자 크기 대신 20px 높이 박스로 맞춰
+   텍스트 글리프(★)를 쓰는 옆 탭과 아이콘 높이가 어긋나지 않게 한다. */
+nav button .nav-ic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  margin-bottom: 2px;
+}
 nav button span {
   display: block;
   font-size: 20px;
@@ -1050,9 +1058,10 @@ nav button span {
 }
 .searchbar-ic {
   color: var(--tx3);
-  font-size: 18px;
   flex: none;
-  line-height: 1;
+  /* SVG 아이콘이라 baseline이 아닌 박스 정렬을 쓴다 */
+  display: flex;
+  align-items: center;
 }
 .searchbar-in {
   flex: 1;

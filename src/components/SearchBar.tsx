@@ -1,4 +1,5 @@
 import type { Ref } from "react";
+import { IconSearch } from "./icons";
 
 interface SearchBarProps {
   value: string;
@@ -15,8 +16,10 @@ interface SearchBarProps {
 export function SearchBar({ value, onChange, inputRef }: SearchBarProps) {
   return (
     <div className="searchbar">
+      {/* ⌕(U+2315)는 기기 폰트에 글리프가 없으면 ')'처럼 깨져 보인다.
+          폰트에 의존하지 않는 SVG로 그린다(튜토리얼과 동일한 아이콘). */}
       <span className="searchbar-ic" aria-hidden="true">
-        ⌕
+        <IconSearch size={19} />
       </span>
       <input
         ref={inputRef}

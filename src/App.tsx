@@ -27,6 +27,7 @@ import { FavList } from "./components/FavList";
 import { ConditionSheet } from "./components/ConditionSheet";
 import { ChartSheet } from "./components/ChartSheet";
 import { TutorialSheet, isFirstVisit } from "./components/TutorialSheet";
+import { IconSearch } from "./components/icons";
 import { Toast } from "./components/Toast";
 import { DataFooter } from "./components/DataFooter";
 // 광고(BannerAd)는 1차 출시 범위에서 제외 — 사업자 등록 후 후속 업데이트로 복원
@@ -450,7 +451,11 @@ function App() {
           className={page === "search" ? "on" : ""}
           onClick={() => switchPage("search")}
         >
-          <span aria-hidden="true">⌕</span>조회
+          {/* ⌕는 기기 폰트에 없으면 ')'로 깨진다 → 검색창·튜토리얼과 같은 SVG */}
+          <span className="nav-ic" aria-hidden="true">
+            <IconSearch size={17} />
+          </span>
+          조회
         </button>
         <button
           type="button"

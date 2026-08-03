@@ -1,5 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { track } from "../lib/analytics";
+import {
+  IconChart,
+  IconList,
+  IconSearch,
+  IconSlider,
+  IconStar,
+} from "./icons";
 
 /**
  * 첫 방문자용 사용법 안내.
@@ -36,30 +43,36 @@ function markSeen() {
   }
 }
 
-/** 안내 항목 — 전부 '무엇을 할 수 있는지'만 적는다. 판단·추천 표현 금지. */
-const STEPS: { icon: string; title: string; desc: string }[] = [
+/**
+ * 안내 항목 — 전부 '무엇을 할 수 있는지'만 적는다. 판단·추천 표현 금지.
+ *
+ * 아이콘은 각 항목이 가리키는 실제 UI와 같은 모양을 쓴다. 검색은 검색창과
+ * 동일한 IconSearch, 즐겨찾기는 목록의 ☆와 같은 별이라 사용자가 튜토리얼과
+ * 실제 화면을 바로 연결할 수 있다.
+ */
+const STEPS: { icon: ReactNode; title: string; desc: string }[] = [
   {
-    icon: "◑",
+    icon: <IconSlider />,
     title: "슬라이더로 조건 정하기",
     desc: "회사 크기·자산 대비 주가 같은 값의 범위를 움직이면, 그 범위에 드는 종목이 조회돼요.",
   },
   {
-    icon: "#",
+    icon: <IconList />,
     title: "하단 숫자는 종목 수",
     desc: "화면 아래 숫자는 지금 조건에 맞는 종목이 몇 개인지 보여줘요.",
   },
   {
-    icon: "◠",
+    icon: <IconChart />,
     title: "종목을 누르면 차트",
     desc: "종목을 누르면 최근 3개월 종가 흐름을 볼 수 있어요.",
   },
   {
-    icon: "☆",
+    icon: <IconStar />,
     title: "즐겨찾기와 폴더",
-    desc: "☆를 눌러 담아두고, 폴더를 만들어 나눠 둘 수 있어요.",
+    desc: "별을 눌러 담아두고, 폴더를 만들어 나눠 둘 수 있어요.",
   },
   {
-    icon: "⌕",
+    icon: <IconSearch />,
     title: "검색으로 바로 찾기",
     desc: "종목명이나 코드를 입력하면 원하는 종목을 바로 찾을 수 있어요. (예: ‘A전자’)",
   },
