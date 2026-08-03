@@ -101,6 +101,32 @@ button:focus:focus-visible,
 header {
   padding: 18px 0 14px;
 }
+.hdrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.hdrow h1 {
+  flex: 1;
+  min-width: 0;
+}
+/* 사용법 다시 보기 — 헤더 구석에 조용히 둔다(주목을 끌지 않는 보조 동선).
+   시각 크기는 작지만 터치 영역은 34px로 확보한다. */
+.helpbtn {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--card2);
+  color: var(--tx3);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+}
+.helpbtn:active {
+  background: var(--line);
+  color: var(--tx2);
+}
 h1 {
   font-size: 23px;
   font-weight: 800;
@@ -584,6 +610,102 @@ h1 {
 }
 .ch-close:active {
   background: var(--line);
+}
+
+/* ── 첫 방문 사용법 안내 ─────────────────────────────────────
+   기존 시트(.sheet) 위에 올라가며 다크·민트 토큰을 그대로 쓴다.
+   닫기(✕)와 '건너뛰기'를 항상 노출해 강제성이 없음을 분명히 한다. */
+.tut-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 4px;
+}
+.tut-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+.tut-x {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: var(--tx2);
+  font-size: 15px;
+  line-height: 1;
+}
+.tut-x:active {
+  background: var(--card2);
+}
+.tut-list {
+  list-style: none;
+  padding: 6px 4px 2px;
+  margin: 0;
+}
+.tut-item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 11px 4px;
+}
+.tut-ico {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--card2);
+  color: var(--acc);
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.tut-it {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--tx);
+}
+.tut-id {
+  margin-top: 3px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--tx2);
+  /* 375px에서 문장이 어색하게 끊기지 않도록 */
+  word-break: keep-all;
+}
+.tut-foot {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.tut-skip {
+  flex: none;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: var(--card2);
+  color: var(--tx2);
+  font-size: 15px;
+  font-weight: 700;
+}
+.tut-skip:active {
+  background: var(--line);
+}
+.tut-ok {
+  flex: 1;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--acc);
+  color: #06251d;
+  font-size: 15.5px;
+  font-weight: 800;
+}
+.tut-ok:active {
+  background: var(--acc-w);
 }
 @keyframes sheetUp {
   from {

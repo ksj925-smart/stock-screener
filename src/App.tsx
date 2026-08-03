@@ -26,6 +26,7 @@ import { ResultList } from "./components/ResultList";
 import { FavList } from "./components/FavList";
 import { ConditionSheet } from "./components/ConditionSheet";
 import { ChartSheet } from "./components/ChartSheet";
+import { TutorialSheet, isFirstVisit } from "./components/TutorialSheet";
 import { Toast } from "./components/Toast";
 import { DataFooter } from "./components/DataFooter";
 // 광고(BannerAd)는 1차 출시 범위에서 제외 — 사업자 등록 후 후속 업데이트로 복원
@@ -55,6 +56,12 @@ function App() {
   const [toast, setToast] = useState<string | null>(null);
   /** 3개월 주가 차트를 열 종목. null이면 시트가 닫힌 상태 */
   const [chartStock, setChartStock] = useState<Stock | null>(null);
+  /**
+   * 사용법 안내. 첫 방문에만 자동으로 한 번 열리고, 이후에는 헤더의 ?
+   * 버튼으로만 열린다(자동 재노출 없음 — 다크패턴 방지).
+   * 초기값을 lazy initializer로 계산해 렌더 중 localStorage를 매번 읽지 않는다.
+   */
+  const [tutorialOpen, setTutorialOpen] = useState(() => isFirstVisit());
   const {
     favorites,
     favItems,
@@ -263,7 +270,19 @@ function App() {
         )}
 
         <header>
-          <h1>{page === "fav" ? "즐겨찾기" : "내 조건 주식찾기"}</h1>
+          <div className="hdrow">
+            <h1>{page === "fav" ? "즐겨찾기" : "내 조건 주식찾기"}</h1>
+            {/* 사용법 다시 보기. 첫 안내를 닫은 뒤 유일한 재열람 경로라
+                눈에 띄지 않게 두되, 터치 영역은 충분히 확보한다. */}
+            <button
+              type="button"
+              className="helpbtn"
+              aria-label="사용법 안내 보기"
+              onClick={() => setTutorialOpen(true)}
+            >
+              ?
+            </button>
+          </div>
           <div className="basis">
             {formatBaseDate(loaded.data.meta.base_date)} 종가 기준 · 실시간 아님
           </div>
@@ -417,6 +436,11 @@ function App() {
       />
 
       <ChartSheet stock={chartStock} onClose={() => setChartStock(null)} />
+
+      <TutorialSheet
+        open={tutorialOpen}
+        onClose={() => setTutorialOpen(false)}
+      />
 
       <Toast message={toast} onDone={() => setToast(null)} />
 
