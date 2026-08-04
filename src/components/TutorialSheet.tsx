@@ -154,14 +154,16 @@ export function TutorialSheet({ open, onClose }: TutorialSheetProps) {
           ))}
         </ul>
 
+        {/* 한 페이지짜리 안내라 선택지를 하나로 둔다.
+            '건너뛰기'를 없애도 상단 ✕와 딤 탭이 남아 있어, 확인 버튼을
+            누르지 않고 나가는 경로가 보장된다(강제성 없음). */}
         <div className="tut-foot">
-          <button type="button" className="tut-skip" onClick={close}>
-            건너뛰기
-          </button>
           <button type="button" className="tut-ok" onClick={close}>
             확인했어요
           </button>
         </div>
+        {/* 안내 텍스트일 뿐이라 버튼처럼 보이지 않게 작고 흐리게 둔다. */}
+        <p className="tut-hint">다시 보려면 상단의 ? 를 눌러주세요</p>
       </div>
     </div>
   );

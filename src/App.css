@@ -679,20 +679,7 @@ h1 {
 }
 .tut-foot {
   display: flex;
-  gap: 8px;
   margin-top: 10px;
-}
-.tut-skip {
-  flex: none;
-  padding: 14px 18px;
-  border-radius: 12px;
-  background: var(--card2);
-  color: var(--tx2);
-  font-size: 15px;
-  font-weight: 700;
-}
-.tut-skip:active {
-  background: var(--line);
 }
 .tut-ok {
   flex: 1;
@@ -705,6 +692,15 @@ h1 {
 }
 .tut-ok:active {
   background: var(--acc-w);
+}
+/* 다시 보기 안내 — 버튼이 아니라 설명이라 가장 흐린 톤(--tx3)에
+   본문보다 작은 크기로 둔다. 밑줄·배경·굵기 강조를 쓰지 않는다. */
+.tut-hint {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--tx3);
 }
 @keyframes sheetUp {
   from {

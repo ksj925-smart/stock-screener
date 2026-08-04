@@ -246,11 +246,41 @@ function App() {
     window.scrollTo(0, 0);
   };
 
+  /**
+   * 데이터를 기다리는 동안에도 앱 화면(헤더)을 먼저 그린다.
+   * 첫 안내를 여기서부터 띄우면 screener.json 대기(실측 약 1.3초)를
+   * 넘기지 않아 체감상 바로 뜬다.
+   *
+   * ⚠️ 다크패턴 방지: 배경이 빈 화면이면 '진입 즉시 가리는' 형태로 읽힐 수
+   *    있다. 그래서 앱 제목이 보이는 화면을 먼저 렌더하고, 그 위에 닫을 수
+   *    있는 시트가 슬라이드업하는 순서를 유지한다. 이 시점엔 아직 조회할
+   *    데이터가 없어 시트가 가로막는 기능도 없다.
+   */
   if (!loaded) {
     return (
-      <div className="wrap">
-        <div className="loading">불러오는 중…</div>
-      </div>
+      <>
+        <div className="wrap">
+          <header>
+            <div className="hdrow">
+              <h1>내 조건 주식찾기</h1>
+              <button
+                type="button"
+                className="helpbtn"
+                aria-label="사용법 안내 보기"
+                onClick={() => setTutorialOpen(true)}
+              >
+                ?
+              </button>
+            </div>
+          </header>
+          <div className="loading">불러오는 중…</div>
+        </div>
+
+        <TutorialSheet
+          open={tutorialOpen}
+          onClose={() => setTutorialOpen(false)}
+        />
+      </>
     );
   }
 
