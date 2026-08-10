@@ -88,10 +88,12 @@ def atr(highs: list[float], lows: list[float], closes: list[float], period: int)
 
 def adx(
     highs: list[float], lows: list[float], closes: list[float], period: int
-) -> tuple[float, float] | None:
-    """(ADX, -DI) 튜플. +DI는 계산 과정에서 나오지만 반환하지 않는다 — 이번
-    승인 범위(ADX·-DI)가 아니라, 값을 만들어 두면 나중에 실수로 노출되기
-    쉽다. 데이터 부족(아래 참고) 또는 분모가 0인 구간이면 None.
+) -> tuple[float, float, float] | None:
+    """(ADX, +DI, -DI) 3-튜플. +DI는 원래 계산 과정에서 이미 나오던 값인데
+    승인 범위가 불명확해 반환하지 않고 버렸었다 — 2026-08 앱인토스 상담원
+    재확인으로 +DI도 표시 가능함이 확인돼 반환에 추가했다(SPEC.md 부록 A).
+    계산 로직 자체는 바뀌지 않았다(버리지 않고 반환만 함). 데이터 부족(아래
+    참고) 또는 분모가 0인 구간이면 None.
 
     ⚠️ 호출자는 반드시 config.ADX_WINDOW(=60)로 슬라이싱한 highs/lows/closes를
     넘겨야 한다. RSI(14)가 RSI_WINDOW=30(2.14×period) 고정 창을 쓰는 것과
@@ -146,8 +148,9 @@ def adx(
     adx_s = _wilder_series(dx, period)
     if not adx_s or tr_s[-1] == 0:
         return None
+    final_plus_di = 100 * plus_s[-1] / tr_s[-1]
     final_minus_di = 100 * minus_s[-1] / tr_s[-1]
-    return round(adx_s[-1], 1), round(final_minus_di, 1)
+    return round(adx_s[-1], 1), round(final_plus_di, 1), round(final_minus_di, 1)
 
 
 def mfi(

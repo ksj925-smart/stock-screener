@@ -10,16 +10,18 @@ B안(SPEC v1.3 확정): screener.json에 시계열을 인라인하지 않고 종
 규제 원칙: SPEC.md 3장 참고. 매매신호·마커·목표가·지지선·판단 라벨 등
    해석을 유도하는 필드는 넣지 않는다.
 
-2026-08-XX 앱인토스 승인(SPEC.md 부록 A)으로 지표 7종(RSI20·MFI·CCI·ADX·
--DI·ATR·볼린저 %B)과 볼린저밴드(20일 이동평균 ± 2표준편차) 필드 추가가
+2026-08-XX 앱인토스 승인(SPEC.md 부록 A)으로 지표 8종(RSI20·MFI·CCI·ADX·
++DI·-DI·ATR·볼린저 %B)과 볼린저밴드(20일 이동평균 ± 2표준편차) 필드 추가가
 허용됨 — 계산된 수치와 객관적 정의만, 밴드는 선 값만(중앙 이동평균선은
-미표시), 매수/매도 판단 필드·+DI는 넣지 않는다(+DI는 승인 범위 밖). %B는
-원래 승인 목록에 포함돼 있었으나 설계 단계에서 누락됐다가 2026-08 재확인 후
-추가됐다(SPEC.md 부록 A).
+미표시), 매수/매도 판단 필드는 넣지 않는다. %B는 원래 승인 목록에 포함돼
+있었으나 설계 단계에서 누락됐다가 2026-08 재확인 후 추가됐다. +DI는 최초
+설계 시 승인 범위가 불명확해 계산은 하되 반환하지 않고 버렸는데, 이후
+앱인토스 상담원 재확인으로 지표 자체(ADX 계산 과정에서 나오는 값) 표시가
+가능함이 확인돼 추가됐다(둘 다 SPEC.md 부록 A).
 
 포맷(자기완결형):
   {"b": 기준일, "d": [날짜...], "p": [종가...],
-   "rsi20": .., "mfi": .., "cci": .., "adx": .., "mdi": .., "atr": .., "bpb": ..,
+   "rsi20": .., "mfi": .., "cci": .., "adx": .., "pdi": .., "mdi": .., "atr": .., "bpb": ..,
    "bm": [중앙선...], "bu": [상단...], "bl": [하단...]}
   종목마다 신규상장·거래정지로 날짜 벡터가 달라 날짜를 파일에 함께 담는다
   (날짜 공유 파일은 부정확). name·code는 screener.json에 이미 있어 생략.
@@ -86,7 +88,9 @@ def main() -> None:
             full_highs[-ADX_WINDOW:], full_lows[-ADX_WINDOW:],
             full_closes[-ADX_WINDOW:], ADX_PERIOD,
         )
-        adx_val, mdi_val = adx_result if adx_result else (None, None)
+        # +DI는 2026-08 앱인토스 상담원 재확인으로 -DI와 함께 표시 가능해짐
+        # (SPEC.md 부록 A) — adx()가 이미 계산해 반환하던 값을 그대로 받는다.
+        adx_val, pdi_val, mdi_val = adx_result if adx_result else (None, None, None)
 
         # 볼린저밴드: series 전체로 계산한 뒤 tail 길이만큼만 잘라 낸다.
         # bollinger_series()는 입력과 같은 길이를 반환하므로 인덱스가 그대로 맞는다.
@@ -112,7 +116,7 @@ def main() -> None:
             bpb_val = round((close_last - bl_last) / band_width, 2) if band_width else None
 
         # 거래정지 추정(is_flat, screener.json 'h' 필드와 같은 판정 함수 재사용,
-        # 최근 15거래일 무변동 여부만 본다) — 7개 지표를 전부 통일해서 null 처리한다.
+        # 최근 15거래일 무변동 여부만 본다) — 8개 지표를 전부 통일해서 null 처리한다.
         # 개별 함수만 믿으면 안 되는 이유: RSI20·MFI·CCI는 짧은 창이라 자체적으로
         # None이 나오지만, ADX_WINDOW(60일)처럼 창이 긴 지표는 최근 15일은
         # 무변동이어도 창 앞쪽 45일에 실제 거래가 있었으면 '거래정지 이전
@@ -121,12 +125,17 @@ def main() -> None:
         # ATR도 같은 이유(무변동 → True Range 0 → 수학적으로 유효한 0)로 값이
         # 남는다. %B도 같은 계열이다 — 무변동 구간은 밴드 폭 자체가 0에
         # 가까워지며 값이 널뛰므로(분모가 작아질수록 %B가 예민하게 반응) 다른
-        # 6개와 함께 None으로 맞춘다. 상세 화면 한 종목 안에서 지표들이
-        # "일부는 —, 일부는 숫자"로 갈리면 "그래도 일부 지표는 신호가 있다"는
-        # 오해를 살 수 있어, 하나라도 최근 무변동이면 전부 None으로 맞춘다
-        # (RSI가 100 대신 None을 반환하도록 만든 것과 같은 원칙).
+        # 지표와 함께 None으로 맞춘다. +DI는 -DI와 같은 adx() 호출 결과(같은
+        # tr_s 분모를 공유)라 -DI와 항상 함께 유효하거나 함께 None이어야
+        # 한다 — mdi_val만 None 처리하고 pdi_val을 빼먹으면 +DI/-DI가 나란히
+        # 표시되는 화면에서 하나만 "—"로 갈리는 모순이 생긴다. 상세 화면 한
+        # 종목 안에서 지표들이 "일부는 —, 일부는 숫자"로 갈리면 "그래도 일부
+        # 지표는 신호가 있다"는 오해를 살 수 있어, 하나라도 최근 무변동이면
+        # 전부 None으로 맞춘다(RSI가 100 대신 None을 반환하도록 만든 것과
+        # 같은 원칙).
         if is_flat(full_closes):
-            rsi20_val = mfi_val = cci_val = atr_val = adx_val = mdi_val = bpb_val = None
+            rsi20_val = mfi_val = cci_val = atr_val = None
+            adx_val = pdi_val = mdi_val = bpb_val = None
 
         payload = {
             "b": tail[-1][0],  # 기준일(마지막 종가 날짜) — UI "기준일 표기"용
@@ -141,6 +150,7 @@ def main() -> None:
             "mfi": mfi_val,
             "cci": cci_val,
             "adx": adx_val,
+            "pdi": pdi_val,
             "mdi": mdi_val,
             "atr": atr_val,
             "bpb": bpb_val,
