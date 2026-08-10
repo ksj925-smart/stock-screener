@@ -14,8 +14,16 @@ from config import PRICE_API
 
 # 스팩 종목명 패턴 (예: "디비금융제14호스팩", "KB제32호스팩")
 _SPAC_RE = re.compile(r"스팩")
-# 우선주 종목명 패턴 (예: "삼성전자우", "하이트진로2우B", "유한양행우")
-_PREF_RE = re.compile(r"우[A-C]?$")
+# 우선주 종목명 패턴 (예: "삼성전자우", "하이트진로2우B", "유한양행우",
+# "CJ4우(전환)", "DL이앤씨2우(전환)").
+#
+# 2026-08 수정: 기존 정규식 r"우[A-C]?$"는 "우"(+옵션 A~C 클래스)로 끝나는
+# 이름만 잡아서, "우" 뒤에 "(전환)" 같은 괄호 접미사가 붙는 전환우선주를
+# 놓쳤다(전수 스캔으로 CJ4우(전환)·DL이앤씨2우(전환) 2종목 확인, LESSONS_LEARNED.md
+# 참고). "(\([^)]*\))?"를 옵션으로 추가해 "우"/"우[A-C]" 뒤에 괄호 접미사가
+# 있어도 끝까지 매칭하도록 확장했다. 전종목 재검증(2763종목) 결과 과잉
+# 매칭(정상 종목이 실수로 걸러짐) 없음을 확인했다.
+_PREF_RE = re.compile(r"우[A-C]?(\([^)]*\))?$")
 
 
 def is_excluded(name: str) -> bool:
@@ -39,8 +47,9 @@ def fetch_latest_prices() -> tuple[str, list[dict]]:
         if items:
             stocks = []
             for it in items:
-                # TODO(검증): 실제 응답 필드명 확인 — basDt/srtnCd/itmsNm/mrktCtg/
-                #             clpr/fltRt/mrktTotAmt/lstgStCnt (SPEC 8장 Phase1-8)
+                # 필드명 검증 완료(2026-08, 실제 응답 basDt=20260807로 확인):
+                # basDt/srtnCd/itmsNm/mrktCtg/clpr/fltRt/mrktTotAmt/lstgStCnt +
+                # hipr/lopr/trqu(고가/저가/거래량, MFI·CCI·ADX·ATR용, SPEC.md 부록 A).
                 mkt = it.get("mrktCtg", "")
                 if mkt not in ("KOSPI", "KOSDAQ"):
                     continue  # KONEX 등 제외
@@ -57,6 +66,11 @@ def fetch_latest_prices() -> tuple[str, list[dict]]:
                             # 시가총액: 원 → 조 단위
                             "cap": round(int(it["mrktTotAmt"]) / 1e12, 4),
                             "shares": int(it.get("lstgStCnt") or 0),
+                            # 거래 없는 날(0)이 실제로 관측됨(예: 신규상장 직후) —
+                            # 값 자체는 0을 그대로 두고, 0 나누기 방어는 indicators.py에서 한다.
+                            "high": int(it.get("hipr") or 0),
+                            "low": int(it.get("lopr") or 0),
+                            "volume": int(it.get("trqu") or 0),
                         }
                     )
                 except (KeyError, ValueError):
