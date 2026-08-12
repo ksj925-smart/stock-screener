@@ -19,14 +19,21 @@ B안(SPEC v1.3 확정): screener.json에 시계열을 인라인하지 않고 종
 앱인토스 상담원 재확인으로 지표 자체(ADX 계산 과정에서 나오는 값) 표시가
 가능함이 확인돼 추가됐다(둘 다 SPEC.md 부록 A).
 
+2026-08-11: RSI(14)/(20) 병기, MFI(14)/(20) 병기 추가(SPEC.md 부록 A,
+운영자 직접 판단 — 새 지표 종류가 아니라 이미 승인된 RSI20·MFI를 다른
+기간으로 한 번 더 계산해 나란히 보여주는 것뿐이라 기존 승인 범위 밖으로
+보지 않았다). rsi14는 screener.json 필터가 이미 쓰는 것과 동일한
+공식(RSI_PERIOD·RSI_WINDOW)을 재사용한 것이라 새 계산 로직이 아니다.
+
 포맷(자기완결형):
   {"b": 기준일, "d": [날짜...], "p": [종가...],
-   "rsi20": .., "mfi": .., "cci": .., "adx": .., "pdi": .., "mdi": .., "atr": .., "bpb": ..,
+   "rsi14": .., "rsi20": .., "mfi": .., "mfi20": .., "cci": .., "adx": ..,
+   "pdi": .., "mdi": .., "atr": .., "bpb": ..,
    "bm": [중앙선...], "bu": [상단...], "bl": [하단...]}
   종목마다 신규상장·거래정지로 날짜 벡터가 달라 날짜를 파일에 함께 담는다
   (날짜 공유 파일은 부정확). name·code는 screener.json에 이미 있어 생략.
 
-  스냅샷 지표(rsi20~bpb)는 기준일(b) 시점 값 1개뿐이고, bm/bu/bl은 d/p와
+  스냅샷 지표(rsi14~bpb)는 기준일(b) 시점 값 1개뿐이고, bm/bu/bl은 d/p와
   같은 길이의 병렬 배열이다(차트 전체 구간에 밴드를 그려야 하므로). bpb(%B)는
   bu/bl 배열의 마지막 값(기준일 값)을 그대로 재사용해 계산한다 — 별도로
   밴드를 다시 계산하지 않는다. 계산은 CACHE_DAYS(전체 캐시, 최대 85일)를
@@ -46,10 +53,13 @@ from config import (
     BB_PERIOD,
     BB_STDDEV_MULT,
     CCI_PERIOD,
+    MFI20_PERIOD,
     MFI_PERIOD,
     PRICE_CACHE_PATH,
     RSI20_PERIOD,
     RSI20_WINDOW,
+    RSI_PERIOD,
+    RSI_WINDOW,
 )
 from indicators import adx, atr, bollinger_series, cci, is_flat, mfi, rsi
 
@@ -77,8 +87,16 @@ def main() -> None:
         full_lows = [row[3] for row in series]
         full_vols = [row[4] for row in series]
 
+        # rsi14는 screener.json 필터(build_json.py)가 쓰는 것과 정확히 같은
+        # 공식(RSI_PERIOD=14, RSI_WINDOW=30)이다 — 재계산이지만 새 로직은
+        # 아니다(같은 price_cache에서 각자 독립적으로 구하므로 결과는 항상
+        # 동일하다).
+        rsi14_val = rsi(full_closes[-RSI_WINDOW:], period=RSI_PERIOD)
         rsi20_val = rsi(full_closes[-RSI20_WINDOW:], period=RSI20_PERIOD)
         mfi_val = mfi(full_highs, full_lows, full_closes, full_vols, MFI_PERIOD)
+        # mfi20은 RSI20이 RSI_PERIOD=14 값 위에 더 긴 기간을 병기한 것과 같은
+        # 패턴 — mfi()가 이미 period를 받으므로 새 함수 없이 기간만 바꿔 호출한다.
+        mfi20_val = mfi(full_highs, full_lows, full_closes, full_vols, MFI20_PERIOD)
         cci_val = cci(full_highs, full_lows, full_closes, CCI_PERIOD)
         atr_val = atr(
             full_highs[-ATR_WINDOW:], full_lows[-ATR_WINDOW:],
@@ -116,7 +134,8 @@ def main() -> None:
             bpb_val = round((close_last - bl_last) / band_width, 2) if band_width else None
 
         # 거래정지 추정(is_flat, screener.json 'h' 필드와 같은 판정 함수 재사용,
-        # 최근 15거래일 무변동 여부만 본다) — 8개 지표를 전부 통일해서 null 처리한다.
+        # 최근 15거래일 무변동 여부만 본다) — 지표를 전부 통일해서 null 처리한다
+        # (rsi14·mfi20 추가로 8개→10개, 판정 원칙은 동일).
         # 개별 함수만 믿으면 안 되는 이유: RSI20·MFI·CCI는 짧은 창이라 자체적으로
         # None이 나오지만, ADX_WINDOW(60일)처럼 창이 긴 지표는 최근 15일은
         # 무변동이어도 창 앞쪽 45일에 실제 거래가 있었으면 '거래정지 이전
@@ -134,7 +153,7 @@ def main() -> None:
         # 전부 None으로 맞춘다(RSI가 100 대신 None을 반환하도록 만든 것과
         # 같은 원칙).
         if is_flat(full_closes):
-            rsi20_val = mfi_val = cci_val = atr_val = None
+            rsi14_val = rsi20_val = mfi_val = mfi20_val = cci_val = atr_val = None
             adx_val = pdi_val = mdi_val = bpb_val = None
 
         payload = {
@@ -146,8 +165,10 @@ def main() -> None:
             # ⚠️ 캐시 자체는 소수를 유지한다 — 반복 리베이스의 누적 오차와
             #    Wilder 평활 창 값 변화를 막기 위해서다. 계산은 소수, 출력은 정수.
             "p": [round(row[1]) for row in tail],
+            "rsi14": rsi14_val,
             "rsi20": rsi20_val,
             "mfi": mfi_val,
+            "mfi20": mfi20_val,
             "cci": cci_val,
             "adx": adx_val,
             "pdi": pdi_val,

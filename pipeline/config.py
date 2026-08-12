@@ -78,6 +78,11 @@ RSI20_PERIOD = 20
 # 42.8 vs 43.8, 40 미만은 더 크게 흔들림)으로 확인.
 RSI20_WINDOW = 40
 MFI_PERIOD = 14
+# RSI(14)/(20) 병기 전례(SPEC.md 부록 A, 2026-08-11)에 따라 MFI도 두 기간을
+# 병기한다. MFI는 Wilder 평활이 아니라 정확히 period(+1)개만 필요해 RSI20처럼
+# 별도 WINDOW 확대가 필요 없다(위 주석 참고) — RSI_PERIOD와 마찬가지로
+# MFI_PERIOD도 그대로 두고 새 기간만 추가한다.
+MFI20_PERIOD = 20
 CCI_PERIOD = 20
 # ADX·ATR은 승인 요청에 기간이 명시되지 않아 Wilder 표준 기본값 14로 확정(사용자 확인 완료).
 ADX_PERIOD = 14
