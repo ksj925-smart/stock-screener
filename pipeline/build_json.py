@@ -49,7 +49,9 @@ def main() -> None:
 
     out, excluded, halted = [], 0, 0
     for s in stocks:
-        closes = [c for _, c in cache.get(s["code"], [])]
+        # 캐시 행은 [날짜, 종가, 고가, 저가, 거래량] (2026-08 확장, SPEC.md 부록 A).
+        # screener.json은 여전히 종가 기반 RSI(14)만 쓰므로 row[1]만 뽑는다.
+        closes = [row[1] for row in cache.get(s["code"], [])]
         # 캐시를 60일로 확대해도 RSI는 최근 RSI_WINDOW(30)일만 사용 → 기존 RSI 값 보존.
         # (전체 closes를 넘기면 Wilder 평활 시드가 달라져 전 종목 RSI가 바뀌는 회귀 발생)
         rsi_val = rsi(closes[-RSI_WINDOW:])
