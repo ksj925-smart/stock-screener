@@ -475,7 +475,48 @@ h1 {
   border-bottom: none;
   border-radius: 20px 20px 0 0;
   padding: 8px 12px calc(14px + env(safe-area-inset-bottom));
-  animation: sheetUp 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+  /* forwards 필수 — 없으면 애니메이션 종료 후 transform이 기본 캐스케이드
+     값(none)으로 되돌아가는 걸 브라우저에 맡기게 된다. 대부분 브라우저는
+     그래도 문제없지만(none은 시각적으로 translateY(0)과 동일), 실기기
+     Toss 인앱 WebView에서는 이 폴백이 정상 동작하지 않아 애니메이션의
+     시작 키프레임(translateY(100%), 시트 자신의 높이만큼 화면 아래로
+     내려간 상태)에 그대로 멈춰버리는 게 실측(디버그 패널의 부모 체인
+     transform 값)으로 확인됐다 — 시트가 화면 전체 높이(.ch-sheet)일 때
+     특히 치명적으로 드러난다. .sheet.out의 sheetDown 애니메이션은 원래도
+     forwards가 있었는데 sheetUp에만 빠져 있던 게 원인. */
+  animation: sheetUp 0.22s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  /* 내용이 뷰포트보다 길어지면(예: 지표 상세 테이블, 저장 조건이 많은
+     내 조건 목록) bottom:0 고정 특성상 상단이 화면 위로 밀려 잘렸다 —
+     안전영역을 고려한 최대 높이를 두고 내부 스크롤로 전환한다.
+     이건 어디까지나 "상한"이라 콘텐츠가 짧은 시트(정렬 기준·폴더
+     지정 등)는 원래 크기 그대로 작게 뜬다 — 그게 의도된 동작이다.
+     "화면 상단까지 거의 꽉 채우기"가 필요한 차트 시트는 이 상한만으로는
+     안 된다(짧은 콘텐츠는 상한에 닿지도 않으므로 아무 효과가 없다 — 이게
+     이전에 max-height만 늘렸을 때 실기기에서 티가 안 났던 원인이다).
+     그런 경우는 아래 .ch-sheet처럼 height를 명시로 줘야 한다.
+
+     env(safe-area-inset-top)은 index.html의 viewport 메타에
+     viewport-fit=cover가 없어 항상 0으로 계산된다(스펙상 그렇다).
+     이 웹뷰(Apps in Toss)의 실제 상단 안전영역 값은 @toss/tds-mobile-ait의
+     SafeAreaInsets가 body에 심어주는 --toss-safe-area-top 커스텀
+     프로퍼티로만 얻을 수 있다 — TDS 자신도 BottomCTA에서
+     max(var(--toss-safe-area-bottom,0px), env(safe-area-inset-bottom), 20px)
+     처럼 커스텀 프로퍼티를 우선하고 env()는 보조로만 쓴다. dvh를 지원하지
+     않는 아주 오래된 엔진을 위해 100vh 버전을 먼저 적어 폴백으로 두고,
+     바로 뒤에 100dvh 버전으로 덮어써 웹뷰 크롬이 동적으로 접히는
+     환경에서도 실제 보이는 높이를 따르게 한다(dvh 미지원 엔진은 두 번째
+     선언 자체가 무효화되어 앞의 vh 버전이 그대로 적용된다). */
+  max-height: calc(
+    100vh - max(var(--toss-safe-area-top, 0px), env(safe-area-inset-top, 0px)) -
+      24px
+  );
+  max-height: calc(
+    100dvh - max(var(--toss-safe-area-top, 0px), env(safe-area-inset-top, 0px)) -
+      24px
+  );
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 .sheet.out {
   animation: sheetDown 0.18s ease-in forwards;
@@ -518,10 +559,87 @@ h1 {
   color: var(--acc);
 }
 
-/* ── 3개월 주가 차트 시트 (v1.3) ─────────────────────────────
-   ⚠️ 규제: 순수 종가 라인만. 밴드·이평·마커·목표가·구간 색강조 금지.
+/* ── 3개월 주가 차트 시트 (v1.3, 2026-08 볼린저밴드 오버레이 승인 — SPEC.md 부록 A) ──
+   규제 원칙: SPEC.md 3장 참고. 밴드 선 외 마커·목표가·구간 색강조는 여전히 금지.
    선 색은 방향성 없는 민트 단색(--acc) — 등락 색(빨강/파랑)을 쓰면
    색이 방향 판단을 유도하므로 중립색 원칙을 따른다. */
+
+/* 차트 시트 전용 — .sheet의 max-height는 "상한"일 뿐이라 콘텐츠(차트 232px +
+   토글 + 접힌 지표 8줄)가 그보다 짧으면 아무 효과가 없다. 차트 시트는
+   이 앱 자신의 페이지 헤더(h1 "즐겨찾기"/"내 조건 주식찾기" + 기준일
+   부제)까지 전부 덮어야 하므로 height를 명시로 준다(다른 바텀시트는
+   짧은 콘텐츠에 맞춰 작게 뜨는 게 맞아서 그대로 max-height만 쓴다).
+   display:flex + overflow:hidden으로 시트 자체는 더 이상 스크롤하지
+   않고, 이름/코드·차트·볼린저밴드 토글은 고정된 채 지표 목록만 아래
+   .ch-scroll 안에서 스크롤된다.
+
+   2026-08-13: 실기기에서 "시트가 화면 상단까지 안 늘어난다"고 보였던
+   진짜 원인은 이 height 계산이 아니었다 — .sheet의 슬라이드업 애니메이션
+   (sheetUp)에 animation-fill-mode: forwards가 빠져 있어서, 실기기 WebView가
+   애니메이션 종료 후 transform을 시작 키프레임(translateY(100%), 시트
+   자신의 높이만큼 화면 아래로 내려간 상태)에 그대로 두는 버그였다(원인과
+   수정은 .sheet 규칙의 sheetUp 애니메이션 선언 참고). 이 height 계산
+   자체는 실기기 디버그 실측으로 처음부터 정상이었음이 확인됐다
+   (computed height = 771.048px = 그 기기의 뷰포트 높이 그대로).
+
+   상단에 별도로 남겨뒀던 "-64px" 여백은 제거한다 — 애초에 "헤더와
+   안 겹치게 하려고" 넣은 값인데, 실제 목표는 정반대로 이 앱 자신의
+   헤더(h1 + 기준일 부제, 실측 약 91px)까지 전부 덮는 것이었다.
+   .sheet-dim(반투명 딤, rgba(0,0,0,.55))이 아무리 화면 전체를 덮어도
+   "어둡게 흐리는" 것뿐이라 헤더 텍스트가 비쳐 보인다 — 실제로 완전히
+   가리는 건 불투명 배경(--card)인 .ch-sheet 쪽이므로, 그 쪽이 진짜
+   화면 최상단(=시스템 상태바 바로 아래)까지 닿아야 한다. */
+.ch-sheet {
+  height: calc(
+    100vh - max(var(--toss-safe-area-top, 0px), env(safe-area-inset-top, 0px))
+  );
+  height: calc(
+    100dvh -
+      max(var(--toss-safe-area-top, 0px), env(safe-area-inset-top, 0px))
+  );
+  max-height: calc(
+    100vh - max(var(--toss-safe-area-top, 0px), env(safe-area-inset-top, 0px))
+  );
+  max-height: calc(
+    100dvh -
+      max(var(--toss-safe-area-top, 0px), env(safe-area-inset-top, 0px))
+  );
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* 아래로 드래그해서 닫기(ChartSheet.tsx) 전용 — transform이 아니라
+     별도 프로퍼티인 translate를 쓴다. sheetUp/sheetDown(.sheet 애니메이션)이
+     이미 transform을 애니메이션하고 있어서, 같은 속성을 드래그용 인라인
+     스타일로 겹쳐 쓰면 CSS 애니메이션이 캐스케이드 우선순위상 인라인
+     스타일을 이겨 버려 드래그가 씹히거나(특히 sheetUp의
+     animation-fill-mode:forwards가 계속 transform을 점유) 이후 버튼/딤
+     클릭으로 닫을 때(sheetDown)와 충돌할 수 있다. translate는 transform과
+     독립적으로 합성되는 별개 속성이라 서로 안 건드리고 공존한다. 드래그
+     놓았을 때(스냅백/닫기)만 이 transition으로 부드럽게 움직이고, 드래그
+     중에는 JS가 인라인 transition:none을 얹어 손가락을 1:1로 따라가게
+     한다(ChartSheet.tsx의 handleDragPointerMove). */
+  transition: translate 0.2s ease-out;
+}
+/* 드래그 시작 영역(핸들·이름/코드·차트·토글) — 세로 드래그를 우리가 JS로
+   직접 처리하므로 브라우저 기본 스크롤/오버스크롤 제스처를 끈다.
+   .ch-scroll(지표 목록)에는 일부러 이 속성을 주지 않아 자체 스크롤과
+   충돌하지 않는다. */
+.ch-drag-zone {
+  touch-action: none;
+}
+/* 지표 상세 아코디언만 담는 스크롤 영역. flex:1로 상단 고정 요소(이름/코드·
+   차트·토글)를 제외한 남는 공간을 전부 채우고, min-height:0으로 flex 아이템
+   기본값(min-height:auto)이 내용 크기만큼 커지려는 것을 막아 overflow가
+   실제로 스크롤로 잘리게 한다. 닫기 버튼(.ch-close)은 이 바깥의 형제
+   요소라 스크롤과 무관하게 항상 하단에 고정된다. */
+.ch-scroll {
+  flex: 1;
+  min-height: 0;
+  margin-bottom: 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
 .ch-head {
   padding: 0 8px 12px;
 }
@@ -564,10 +682,20 @@ h1 {
   outline-offset: 2px;
 }
 .ch-foot {
-  padding: 8px 8px 0;
-  font-size: 12px;
+  /* 볼린저밴드 켜짐 기준 최장 문구("최근 60거래일 종가 · YYYY년 M월 D일
+     기준 · 볼린저밴드(20일 평균 ±2표준편차)")가 360px 폭 기기에서 한 줄에
+     들어가도록 실측(getBoundingClientRect)해서 맞춘 값이다 — 가로 패딩을
+     0으로 줄이고(.ch-ind-row 등 다른 하위 요소도 2px 이하라 굳이 8px일
+     이유가 없었다) 폰트를 9px까지 낮춰서 336px 중 326.6px, 약 9.4px
+     여유를 확보했다. white-space:nowrap + ellipsis는 그래도 더 좁은
+     기기(예: 320px)를 위한 안전장치 — 거기서만 말줄임표로 잘린다. */
+  padding: 8px 0 0;
+  font-size: 9px;
   color: var(--tx3);
   text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .ch-msg {
   text-align: center;
@@ -600,16 +728,119 @@ h1 {
 }
 .ch-close {
   width: 100%;
-  margin-top: 12px;
+  flex-shrink: 0;
+  /* .ch-scroll(flex:1)이 이미 남는 공간을 다 채우는 phase("ok")에서는
+     auto가 0으로 수렴해 .ch-scroll의 margin-bottom(12px)만큼만 떨어져
+     보인다. 지표 목록 자체가 없는 phase(로딩·에러·few)에서는 이 auto가
+     남는 flex 공간을 전부 흡수해 닫기 버튼을 항상 시트 맨 아래로 밀어준다. */
+  margin-top: auto;
   padding: 14px;
+  border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--card2);
-  color: var(--tx);
+  /* --tx(거의 흰색)는 확정/이동 같은 1차 액션에 쓰는 무게감이라, 단순
+     닫기(dismiss)에는 과했다 — .reset(조건 초기화)과 같은 --tx2로 낮춰
+     "보조 액션" 톤을 맞춘다. 테두리도 .reset과 동일한 --line을 둘러
+     시트 배경(--card, #151a23)과 버튼 배경(--card2, #1c222d)의 미세한
+     명도차만으로는 잘 안 보이던 경계를 분명히 한다. */
+  color: var(--tx2);
   font-size: 15.5px;
   font-weight: 700;
 }
 .ch-close:active {
   background: var(--line);
+  border-color: var(--dim);
+}
+
+/* ── 지표 상세 아코디언 (2026-08 승인 — SPEC.md 부록 A) ────────────
+   계산된 수치와 객관적 정의만 표시한다. 등급·순위·추천 강조색 없음(중립
+   타이포만 사용) — 시총·PBR 등 기존 chip과 같은 절제된 톤을 유지한다.
+   기본 전부 접힘(이름만) → 탭하면 값+설명이 펼쳐진다. 콘텐츠가 길어지는
+   문제는 개별 행이 아니라 .sheet 전체의 overflow-y:auto로 해결한다. */
+.ch-ind {
+  margin-top: 14px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+.ch-ind-row {
+  border-bottom: 1px solid var(--line);
+}
+.ch-ind-row:last-child {
+  border-bottom: none;
+}
+.ch-ind-top {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 8px;
+  padding: 12px 2px;
+  text-align: left;
+}
+.ch-ind-top:active {
+  background: var(--card2);
+}
+.ch-ind-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--tx);
+}
+.ch-ind-val {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--tx);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* 접힘/펼침을 나타내는 화살표. 색상 강조 없이 중립 회색(--tx3) 하나만 쓴다. */
+.ch-ind-arrow {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid var(--tx3);
+  border-bottom: 2px solid var(--tx3);
+  transform: rotate(45deg);
+  transition: transform 0.15s ease;
+}
+.ch-ind-row.open .ch-ind-arrow {
+  transform: rotate(-135deg);
+}
+.ch-ind-desc {
+  margin: 0;
+  padding: 0 2px 12px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--tx3);
+}
+/* RSI/MFI처럼 상위 항목 하나 아래 기간별(14/20) 값을 묶어 보여주는 하위
+   목록(2026-08-11, RSI(14)/(20)·MFI(14)/(20) 병기, SPEC.md 부록 A). 다른
+   지표 행과 시각적으로 구분되도록 왼쪽 세로선 + 들여쓰기를 준다. */
+.ch-ind-sub {
+  padding: 0 2px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ch-ind-subrow {
+  padding-left: 14px;
+  border-left: 2px solid var(--line);
+}
+.ch-ind-subtop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+.ch-ind-sublabel {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tx2);
+}
+.ch-ind-subrow .ch-ind-desc {
+  padding: 0;
 }
 
 /* ── 첫 방문 사용법 안내 ─────────────────────────────────────
