@@ -39,6 +39,8 @@ def latest_available_date() -> str | None:
         sys.exit("환경변수 DATA_GO_KR_API_KEY가 설정되지 않았습니다.")
 
     today = dt.datetime.now(KST).date()
+    successful_requests = 0
+    last_error: Exception | None = None
     # back=0(오늘)부터 훑는다. 러너 시각(UTC)이 KST보다 하루 뒤일 수 있어서다.
     for back in range(0, MAX_BACK_DAYS + 1):
         day = today - dt.timedelta(days=back)
@@ -53,13 +55,19 @@ def latest_available_date() -> str | None:
             res = requests.get(PRICE_API, params=query, timeout=REQUEST_TIMEOUT)
             res.raise_for_status()
             body = res.json().get("response", {}).get("body", {})
+            successful_requests += 1
             if int(body.get("totalCount", 0) or 0) > 0:
                 return day.isoformat()
-        except (requests.RequestException, ValueError):
-            # 일시적 오류로 전체 실행을 죽이지 않는다. 다음 날짜로 넘어가고,
-            # 끝까지 실패하면 '새 데이터 없음'으로 처리된다. 이 경우에도
-            # verify_freshness가 지연을 계속 관측하므로 사각지대는 없다.
+        except (requests.RequestException, ValueError, AttributeError) as error:
+            # 특정 날짜 한 번의 실패는 다음 날짜 조회로 복구한다. 다만 모든
+            # 요청이 실패했다면 '새 데이터 없음'이 아니라 API 장애다. 이를
+            # 성공으로 끝내면 초록색 Actions가 지연을 숨기므로 아래에서 실패시킨다.
+            last_error = error
             continue
+    if successful_requests == 0:
+        raise RuntimeError(
+            "시세 API 확인 요청이 모두 실패했습니다. 네트워크·API 상태를 확인하세요."
+        ) from last_error
     return None
 
 
