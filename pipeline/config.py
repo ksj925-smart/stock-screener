@@ -53,6 +53,8 @@ FINANCE_API = (
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 PRICE_CACHE_PATH = os.path.join(DATA_DIR, "price_cache.json")
 FINANCIALS_PATH = os.path.join(DATA_DIR, "financials.json")
+# 자본변경(리베이스) 감지 이벤트 기록 {종목코드: [반영 첫 거래일, ...]} — 거래량 지표 보호용
+REBASE_EVENTS_PATH = os.path.join(DATA_DIR, "rebase_events.json")
 # GitHub Pages(/docs)로 서빙 → VITE_SCREENER_URL로 연결
 OUTPUT_PATH = os.path.join(os.path.dirname(__file__), "..", "docs", "screener.json")
 
@@ -99,3 +101,9 @@ BB_STDDEV_MULT = 2.0
 
 PAGE_SIZE = 1000
 REQUEST_TIMEOUT = 30
+
+# 거래량 변화 = 최근 VOL_RECENT일 평균 ÷ 직전 VOL_PRIOR일 평균 (겹치지 않는 구간).
+# 3개월 등락률 = 최근 종가 ÷ RET_LOOKBACK거래일 전 종가(인덱스 -(RET_LOOKBACK+1)) - 1.
+VOL_RECENT = 20
+VOL_PRIOR = 40
+RET_LOOKBACK = 60

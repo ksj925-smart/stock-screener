@@ -15,10 +15,10 @@ import datetime as dt
 import json
 import os
 
-from config import FINANCIALS_PATH, OUTPUT_PATH, RSI_WINDOW
+from config import FINANCIALS_PATH, OUTPUT_PATH, RSI_WINDOW, VOL_PRIOR, VOL_RECENT
 from fetch_prices import fetch_latest_prices
-from indicators import is_flat, rsi
-from price_cache import append_prices, load_cache, save_cache
+from indicators import is_flat, period_return, rsi, volume_ratio
+from price_cache import append_prices, load_cache, load_events, save_cache, save_events
 
 KST = dt.timezone(dt.timedelta(hours=9))
 
@@ -42,8 +42,10 @@ def main() -> None:
     base_date, stocks = fetch_latest_prices()
     print(f"기준일 {base_date}, 시세 {len(stocks)}종목")
 
-    cache = append_prices(load_cache(), base_date, stocks)
+    events = load_events()
+    cache = append_prices(load_cache(), base_date, stocks, events)
     save_cache(cache)
+    save_events(events)
 
     fin, fin_year = load_financials()
 
@@ -60,6 +62,23 @@ def main() -> None:
         is_halted = is_flat(closes)
         if is_halted:
             halted += 1
+
+        # 거래량 변화(vr)·3개월 등락률(r3). 거래정지(is_flat)면 둘 다 null.
+        # 거래량은 리베이스 보정이 안 되므로, 최근 VOL_RECENT+VOL_PRIOR행 안에
+        # 자본변경 이벤트가 있으면 vr만 null (경계일 포함 = 보수적). r3는 보정된 종가라 유지.
+        rows = cache.get(s["code"], [])
+        vr = r3 = None
+        if not is_halted:
+            r3_raw = period_return(closes)
+            r3 = None if r3_raw is None else round(r3_raw, 1)
+            n_vol = VOL_RECENT + VOL_PRIOR
+            window_start = rows[-n_vol][0] if len(rows) >= n_vol else None
+            rebased_in_window = window_start is not None and any(
+                d >= window_start for d in events.get(s["code"], [])
+            )
+            if not rebased_in_window:
+                vr_raw = volume_ratio([row[4] for row in rows])
+                vr = None if vr_raw is None else round(vr_raw, 2)
 
         pbr = per = None
         f = fin.get(s["code"])
@@ -86,6 +105,8 @@ def main() -> None:
                 "rsi": rsi_val,
                 "pbr": pbr,
                 "per": per,
+                "vr": vr,
+                "r3": r3,
                 # h=1: 30영업일 가격 무변동(거래정지 추정). 프론트의 '거래 없는
                 # 종목 빼기' 토글용. 평시 종목은 필드를 생략해 용량을 아낀다.
                 **({"h": 1} if is_halted else {}),

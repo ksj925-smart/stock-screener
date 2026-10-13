@@ -1,7 +1,7 @@
 """RSI(14) + 지표 테이블 5종·볼린저밴드 계산 — Wilder 평활 방식
 (SPEC 7장, SPEC.md 부록 A)"""
 
-from config import RSI_PERIOD
+from config import RET_LOOKBACK, RSI_PERIOD, VOL_PRIOR, VOL_RECENT
 
 
 def is_flat(closes: list[float], period: int = RSI_PERIOD) -> bool:
@@ -222,3 +222,34 @@ def bollinger_series(
         std = variance**0.5
         out.append((round(mid), round(mid + mult * std), round(mid - mult * std)))
     return out
+
+
+def volume_ratio(volumes: list[float]) -> float | None:
+    """최근 VOL_RECENT일 평균 거래량 ÷ 직전 VOL_PRIOR일 평균 거래량 (겹치지 않는 구간).
+
+    volumes는 과거→최신. 캐시 규약상 0(또는 None/음수)은 결측이라 구간 안에 하나라도
+    있으면 None. 행 부족, 직전 평균 0도 None. 거래정지·리베이스 판정은 호출 쪽 책임.
+    """
+    n = VOL_RECENT + VOL_PRIOR
+    if len(volumes) < n:
+        return None
+    window = volumes[-n:]
+    if any(v is None or v <= 0 for v in window):
+        return None
+    prior = sum(window[:VOL_PRIOR]) / VOL_PRIOR
+    if prior <= 0:
+        return None
+    return (sum(window[VOL_PRIOR:]) / VOL_RECENT) / prior
+
+
+def period_return(closes: list[float]) -> float | None:
+    """3개월 등락률(%) = (최근 종가 / RET_LOOKBACK거래일 전 종가 - 1) × 100 (인덱스 -61).
+
+    행 부족이거나 기준 종가가 0 이하면 None.
+    """
+    if len(closes) < RET_LOOKBACK + 1:
+        return None
+    base = closes[-(RET_LOOKBACK + 1)]
+    if base is None or base <= 0 or closes[-1] is None:
+        return None
+    return (closes[-1] / base - 1) * 100

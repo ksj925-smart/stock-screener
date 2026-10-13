@@ -13,8 +13,9 @@
 
 import json
 import os
+import tempfile
 
-from config import CACHE_DAYS, PRICE_CACHE_PATH
+from config import CACHE_DAYS, PRICE_CACHE_PATH, REBASE_EVENTS_PATH
 
 
 def load_cache() -> dict[str, list[list]]:
@@ -24,12 +25,47 @@ def load_cache() -> dict[str, list[list]]:
         return json.load(f)
 
 
+def load_events() -> dict[str, list[str]]:
+    """리베이스 이벤트 {종목코드: [반영 첫 거래일(YYYY-MM-DD), ...]}. 파일이 없으면 빈 dict."""
+    if not os.path.exists(REBASE_EVENTS_PATH):
+        return {}
+    with open(REBASE_EVENTS_PATH, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def record_event(events: dict, code: str, day: str) -> bool:
+    """(코드, 일자)를 중복 없이 기록한다. 새로 추가했으면 True."""
+    days = events.setdefault(code, [])
+    if day in days:
+        return False
+    days.append(day)
+    days.sort()
+    return True
+
+
+def save_events(events: dict) -> None:
+    directory = os.path.dirname(REBASE_EVENTS_PATH)
+    os.makedirs(directory, exist_ok=True)
+    fd, temporary_path = tempfile.mkstemp(prefix="rebase-", suffix=".json", dir=directory)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(dict(sorted(events.items())), f, ensure_ascii=False, separators=(",", ":"))
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(temporary_path, REBASE_EVENTS_PATH)
+    finally:
+        if os.path.exists(temporary_path):
+            os.unlink(temporary_path)
+
+
 # 캐시 전일 종가와 API 조정 전일가의 허용 오차. fltRt 반올림 오차는 0.1% 미만이고
 # 병합·분할·감자·무상증자는 수십~수백% 차이라 5%면 오탐 없이 구분된다.
 REBASE_TOLERANCE = 0.05
 
 
-def append_prices(cache: dict, base_date: str, stocks: list[dict]) -> dict:
+def append_prices(
+    cache: dict, base_date: str, stocks: list[dict], events: dict | None = None
+) -> dict:
     """오늘 종가·고가·저가·거래량을 증분 append하고 CACHE_DAYS 초과분은 절삭한다.
 
     자본변경(액면병합·분할·감자·무상증자 등) 감지 시 캐시를 리베이스한다:
@@ -43,6 +79,8 @@ def append_prices(cache: dict, base_date: str, stocks: list[dict]) -> dict:
     가격처럼 단순 비례하지 않고, 이 프로젝트는 거래량을 과거로 역보정한
     전례가 없다. MFI가 리베이스 경계 근처(최근 14거래일 이내)에서 일시적으로
     부정확할 수 있음을 알려진 한계로 남긴다.
+    대신 events가 주어지면 리베이스가 발동한 (종목코드, 새 행의 날짜)를 기록해
+    거래량 기반 지표(vr)가 해당 구간을 결측 처리하도록 한다(같은 쌍은 중복 기록 안 함).
     """
     rebased = 0
     for s in stocks:
@@ -60,6 +98,8 @@ def append_prices(cache: dict, base_date: str, stocks: list[dict]) -> dict:
                         row[2] = round(row[2] * factor, 4)
                         row[3] = round(row[3] * factor, 4)
                     rebased += 1
+                    if events is not None:
+                        record_event(events, s["code"], base_date)
         series.append(
             [
                 base_date,
